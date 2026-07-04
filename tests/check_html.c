@@ -411,7 +411,7 @@ END_TEST
 
 START_TEST(test_html_external_calls)
 {
-	html_getdocument(L, html_str, strlen(html_str));
+	html_get_document(L, html_str, strlen(html_str));
 	check_userdata_meta_name("thoth.html.doc");
 }
 END_TEST

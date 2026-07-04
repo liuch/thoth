@@ -109,7 +109,7 @@ static int get_response_html(lua_State *L)
 {
 	struct http_resp *resp = luaL_checkudata(L, 1, HTTP_RESP_META_NAME);
 	if (resp->buffer.pointer != NULL && resp->buffer.size != 0) {
-		html_getdocument(L, (const char *)resp->buffer.pointer, resp->buffer.size);
+		html_get_document(L, (const char *)resp->buffer.pointer, resp->buffer.size);
 		free_buffer(&resp->buffer);
 		return 1;
 	}
