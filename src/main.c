@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include "lua.h" // IWYU pragma: keep
 #include "core.h"
+#include "version.h"
 #include "modules.h"
 
 /**
@@ -36,6 +37,8 @@ int main(int argc, char **argv)
 	get_modules(L);
 	lua_pushcfunction(L, global_protect);
 	lua_setfield(L, -2, "globalProtect");
+	lua_pushliteral(L, APP_VERSION);
+	lua_setfield(L, -2, "_VERSION");
 
 	// Extra arguments
 	int extra_args = 0;
