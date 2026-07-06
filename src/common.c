@@ -13,10 +13,10 @@ char *my_strdup(const char *str)
 {
 	char *new_str = NULL;
 	if (str != NULL) {
-		size_t len = strlen(str) + 1;
-		new_str = malloc(len);
+		size_t size = strlen(str) + 1;
+		new_str = malloc(size);
 		if (new_str != NULL) {
-			memcpy(new_str, str, len);
+			memcpy(new_str, str, size);
 		}
 	}
 	return new_str;
