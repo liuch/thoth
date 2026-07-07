@@ -37,6 +37,8 @@ int main(int argc, char **argv)
 	get_modules(L);
 	lua_pushcfunction(L, global_protect);
 	lua_setfield(L, -2, "globalProtect");
+	lua_pushliteral(L, APP_NAME);
+	lua_setfield(L, -2, "_NAME");
 	lua_pushliteral(L, APP_VERSION);
 	lua_setfield(L, -2, "_VERSION");
 

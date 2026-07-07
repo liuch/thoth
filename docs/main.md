@@ -24,12 +24,14 @@ utils	userdata
 globalProtect	function
 readline	userdata
 _VERSION	string
+_NAME	string
 ```
 
 The first parameter passed to the script is a regular key-value table that contains one function and five modules. The remaining parameters are passed as a string without changes.
 
 | Key           | Type     | Description                              |
 | ------------- | --------------------------------------------------- |
+| \_NAME        | string   | Application name                         |
 | \_VERSION     | string   | Application version                      |
 | globalProtect | function | Global environment protection management |
 | html          | userdata | HTML parser module                       |
@@ -39,6 +41,10 @@ The first parameter passed to the script is a regular key-value table that conta
 | utils         | userdata | Utils module                             |
 
 ## Properties
+
+### \_NAME
+
+The application name as a string.
 
 ### \_VERSION
 
