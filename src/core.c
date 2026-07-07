@@ -1,6 +1,6 @@
 #include <stdbool.h>
-#include "lua.h" // IWYU pragma: keep
 #include "core.h"
+#include "version.h"
 #include "settings.h"
 
 /**
@@ -113,6 +113,48 @@ void init_core(lua_State *L)
 	lua_setfield(L, -2, "__newindex");
 	lua_setmetatable(L, -2);
 	lua_pop(L, 1);
+}
+
+/**
+ * Adds the application name to the passed table
+ *
+ * @param lua_State* L Lua stack
+ *
+ * @return void
+ *
+ * === Lua stack ===
+ *
+ * Input:
+ *   - table Table to add
+ *
+ * Output:
+ *   nothing
+ */
+void add_app_name(lua_State *L)
+{
+	lua_pushliteral(L, APP_NAME);
+	lua_setfield(L, -2, "_NAME");
+}
+
+/**
+ * Adds the application version to the passed table
+ *
+ * @param lua_State* L Lua stack
+ *
+ * @return void
+ *
+ * === Lua stack ===
+ *
+ * Input:
+ *   - table Table to add
+ *
+ * Output:
+ *   nothing
+ */
+void add_app_version(lua_State *L)
+{
+	lua_pushliteral(L, APP_VERSION);
+	lua_setfield(L, -2, "_VERSION");
 }
 
 /**
