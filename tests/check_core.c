@@ -1,8 +1,8 @@
 #include <stdbool.h>
 #include <check.h>
 #include "common.h"
-#include "../src/lua.h"
 #include "../src/core.h"
+#include "../src/version.h"
 
 static void setup_core(void)
 {
@@ -20,6 +20,26 @@ static bool set_protection_state(bool new_state)
 	lua_pop(L, 1);
 	return old_state;
 }
+
+START_TEST(test_core_get_name)
+{
+	lua_newtable(L);
+	add_app_name(L);
+	lua_getfield(L, -1, "_NAME");
+	ck_assert_int_eq(LUA_TSTRING, lua_type(L, -1));
+	ck_assert_str_eq(APP_NAME, lua_tostring(L, -1));
+}
+END_TEST
+
+START_TEST(test_core_get_version)
+{
+	lua_newtable(L);
+	add_app_version(L);
+	lua_getfield(L, -1, "_VERSION");
+	ck_assert_int_eq(LUA_TSTRING, lua_type(L, -1));
+	ck_assert_str_eq(APP_VERSION, lua_tostring(L, -1));
+}
+END_TEST
 
 START_TEST(test_core_stack_start_position)
 {
@@ -63,6 +83,8 @@ Suite *core_suite(void)
 
 	TCase *tc_core = tcase_create("Core");
 	tcase_add_checked_fixture(tc_core, setup_core, teardown);
+	tcase_add_test(tc_core, test_core_get_name);
+	tcase_add_test(tc_core, test_core_get_version);
 	tcase_add_test(tc_core, test_core_stack_start_position);
 	tcase_add_test(tc_core, test_core_get_global_protection_state);
 	tcase_add_test(tc_core, test_core_global_protection_turn_off);
