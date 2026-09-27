@@ -12,7 +12,7 @@ Methods:
 
 ### decode()
 
-Decodes the passed JSON string
+Decodes the passed JSON string and returns a Lua value or nil in case of an error
 
 Arguments:
 
@@ -21,7 +21,8 @@ Arguments:
 
 Results:
 
-- Result [table|boolean|string|number]
+- Result [table|boolean|string|number|nil]
+- Error message [string|nil]
 
 Example:
 
@@ -37,7 +38,7 @@ $ ./thoth script.lua
 
 ### encode()
 
-Encodes the passed value into a JSON string
+Encodes the passed value and returns a JSON string or nil in case of an error
 
 Arguments:
 
@@ -46,7 +47,8 @@ Arguments:
 
 Results:
 
-- JSON string [string]
+- JSON string [string|nil]
+- Error message [string|nil]
 
 Example:
 

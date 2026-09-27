@@ -347,6 +347,7 @@ Arguments:
 Results:
 
 - JSON value [table|boolean|string|number|nil]
+- Error message [string|nil]
 
 Example:
 
@@ -358,7 +359,12 @@ local result = socket:fetch(
 	{ ["Accept"] = "application/vnd.github+json", ["X-GitHub-Api-Version"] = "2022-11-28" }
 )
 if (result.ok) then
-	print(result:json().name)
+	local data, errmsg = result:json()
+	if type(data) == "table" then
+		print(data.name)
+	else
+		print(errmsg or "Invalid server response!")
+	end
 else
 	print("Error!")
 end

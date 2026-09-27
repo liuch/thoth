@@ -70,7 +70,7 @@ static int get_response_text(lua_State *L)
  *
  * @param lua_State* L Lua stack
  *
- * @return int 0 or 1
+ * @return int
  *
  * === Lua stack ===
  *
@@ -78,17 +78,19 @@ static int get_response_text(lua_State *L)
  *   - [1] userdata HTTP response object
  *
  * Output:
- *   - table|boolean|string|number|nothing
+ *   - table|boolean|string|number|nil Result
+ *   - string|nil                      Error message in case of an error
  */
 static int get_response_json(lua_State *L)
 {
 	struct http_resp *resp = luaL_checkudata(L, 1, HTTP_RESP_META_NAME);
-	if (resp->buffer.pointer != NULL && resp->buffer.size != 0) {
-		json_decode_string(L, resp->buffer.pointer, resp->buffer.size);
-		free_buffer(&resp->buffer);
-		return 1;
+	if (resp->buffer.pointer == NULL || resp->buffer.size == 0) {
+		return 0;
 	}
-	return 0;
+
+	int rcnt = json_decode_string(L, resp->buffer.pointer, resp->buffer.size);
+	free_buffer(&resp->buffer);
+	return rcnt;
 }
 
 /**

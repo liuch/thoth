@@ -11,9 +11,9 @@ struct json_data {
 	bool active;
 };
 
-static json_t *make_json_value(lua_State *L);
-static void iterate_array(lua_State *L, json_t *array);
-static void iterate_object(lua_State *L, json_t *object);
+static int make_json_value(lua_State *L, json_t **storage);
+static int iterate_array(lua_State *L, json_t *array);
+static int iterate_object(lua_State *L, json_t *object);
 
 static int module_started = 0;
 
@@ -52,7 +52,7 @@ static int json_value_cleanup(lua_State *L)
  * @param lua_State* L     Lua stack
  * @param json_t*    value JSON library structure
  *
- * @return void
+ * @return int
  *
  * === Lua stack ===
  *
@@ -60,20 +60,22 @@ static int json_value_cleanup(lua_State *L)
  *   noting
  *
  * Output:
- *   - table|string|number|boolean|nil
+ *   - table|string|number|boolean|nil Lua value converted from the JSON library structure
+ *   - string|nil                      Error message in case of an error
  */
-static void push_json_value(lua_State *L, json_t *value)
+static int push_json_value(lua_State *L, json_t *value)
 {
+	int rcnt = 1;
 	switch (json_typeof(value)) {
 		case JSON_ARRAY:
 			luaL_checkstack(L, 3, "JSON: too many nested elements");
 			lua_newtable(L);
-			iterate_array(L, value);
+			rcnt = iterate_array(L, value) + 1;
 			break;
 		case JSON_OBJECT:
 			luaL_checkstack(L, 3, "JSON: too many nested elements");
 			lua_newtable(L);
-			iterate_object(L, value);
+			rcnt = iterate_object(L, value) + 1;
 			break;
 		case JSON_STRING:
 			lua_pushstring(L, json_string_value(value));
@@ -94,17 +96,21 @@ static void push_json_value(lua_State *L, json_t *value)
 			lua_pushnil(L);
 			break;
 		default:
+			lua_pushnil(L);
 			lua_pushliteral(L, "JSON: unsupported data type");
-			lua_error(L);
+			rcnt = 2;
+			break;
 	}
+	return rcnt;
 }
 
 /**
  * Creates and returns a JSON table or object based on the keys and values of the passed Lua table
  *
- * @param lua_State* L Lua stack
+ * @param lua_State* L       Lua stack
+ * @param json_t**   storage JSON value storage to save the result to
  *
- * @return json_t*
+ * @return int 0 if there are no errors, otherwise 1
  *
  * === Lua stack ===
  *
@@ -114,7 +120,7 @@ static void push_json_value(lua_State *L, json_t *value)
  * Output:
  *   nothing
  */
-static json_t *make_json_table(lua_State *L)
+static int make_json_table(lua_State *L, json_t **storage)
 {
 	int len = luaL_len(L, -1);
 
@@ -136,19 +142,24 @@ static json_t *make_json_table(lua_State *L)
 				if (key < 1 || key > len) is_object = true;
 				break;
 			default:
-				lua_pushfstring(L, "JSON: incorrect table key type: %s", lua_typename(L, type));
-				lua_error(L);
+				lua_pop(L, 2);
+				lua_pushfstring(L, "JSON: incorrect key type: %s", lua_typename(L, type));
+				return 1;
 		}
 		lua_pop(L, 1);
 	}
 
-	json_t *table;
+	json_t *table = NULL;
 	if (is_object) {
 		table = json_object();
 		lua_pushnil(L);
 		while (lua_next(L, -2) != 0) {
 			int res;
-			json_t *value = make_json_value(L);
+			json_t *value = NULL;
+			if (make_json_value(L, &value) != 0) {
+				json_decref(value);
+				return 1;
+			}
 			lua_pop(L, 1);
 			if (lua_type(L, -1) == LUA_TSTRING) {
 				res = json_object_set_new(table, lua_tostring(L, -1), value);
@@ -168,25 +179,31 @@ static json_t *make_json_table(lua_State *L)
 		table = json_array();
 		for (int i = 1; i <= len; ++i) {
 			lua_rawgeti(L, -1, i);
-			json_t *value = make_json_value(L);
+			json_t *value = NULL;
+			if (make_json_value(L, &value) != 0) {
+				json_decref(value);
+				return 1;
+			}
 			lua_pop(L, 1);
 			if (json_array_append_new(table, value) != 0) {
 				json_decref(table);
-				json_decref(table);
+				json_decref(value);
 				lua_pushliteral(L, "JSON: failed to append array item");
 				lua_error(L);
 			}
 		}
 	}
-	return table;
+	*storage = table;
+	return 0;
 }
 
 /**
  * Creates and returns a JSON value based on the passed Lua value
  *
- * @param lua_State* L Lua stack
+ * @param lua_State* L       Lua stack
+ * @param json_t**   storage JSON value storage to save the result to
  *
- * @return json_t*
+ * @return int 0 if there are no errors, otherwise 1
  *
  * === Lua stack ===
  *
@@ -196,36 +213,38 @@ static json_t *make_json_table(lua_State *L)
  * Output:
  *   nothing
  */
-static json_t *make_json_value(lua_State *L)
+static int make_json_value(lua_State *L, json_t **storage)
 {
-	json_t *value;
 	int type = lua_type(L, -1);
 	switch (type) {
 		case LUA_TNUMBER:
 			if (lua_isinteger(L, -1)) {
-				value = json_integer(lua_tointeger(L, -1));
+				*storage = json_integer(lua_tointeger(L, -1));
 			} else {
-				value = json_real(lua_tonumber(L, -1));
+				*storage = json_real(lua_tonumber(L, -1));
 			}
 			break;
 		case LUA_TSTRING:
-			value = json_string(lua_tostring(L, -1));
+			*storage = json_string(lua_tostring(L, -1));
 			break;
 		case LUA_TTABLE:
-			value = make_json_table(L);
+			return make_json_table(L, storage);
 			break;
 		case LUA_TBOOLEAN:
-			value = json_boolean(lua_toboolean(L, -1));
+			*storage = json_boolean(lua_toboolean(L, -1));
 			break;
 		case LUA_TNIL:
-			value = json_null();
+			*storage = json_null();
 			break;
 		default:
 			lua_pushfstring(L, "JSON: unsupported data type: %s", lua_typename(L, type));
-			lua_error(L);
-			break;
+			return 1;
 	}
-	return value;
+	if (*storage == NULL) {
+		lua_pushliteral(L, "JSON: internal error");
+		lua_error(L);
+	}
+	return 0;
 }
 
 /**
@@ -234,7 +253,7 @@ static json_t *make_json_value(lua_State *L)
  * @param lua_State* L     Lua stack
  * @param json_t*    array JSON array
  *
- * @return void
+ * @return int 0 if there are no errors, otherwise 1
  *
  * === Lua stack ===
  *
@@ -242,15 +261,19 @@ static json_t *make_json_value(lua_State *L)
  *   - table Empty Lua table to insert into
  *
  * Output:
- *   nothing
+ *   - string|noting Error message in case of an error
  */
-static void iterate_array(lua_State *L, json_t *array)
+static int iterate_array(lua_State *L, json_t *array)
 {
 	for (size_t i = 0; i < json_array_size(array); ) {
 		json_t *value = json_array_get(array, i);
-		push_json_value(L, value);
+		if (push_json_value(L, value) == 2) {
+			lua_replace(L, -2);
+			return 1;
+		}
 		lua_rawseti(L, -2, ++i);
 	}
+	return 0;
 }
 
 /**
@@ -259,7 +282,7 @@ static void iterate_array(lua_State *L, json_t *array)
  * @param lua_State* L      Lua stack
  * @param json_t*    object JSON object
  *
- * @return void
+ * @return int 0 if there are no errors, otherwise 1
  *
  * === Lua stack ===
  *
@@ -267,17 +290,22 @@ static void iterate_array(lua_State *L, json_t *array)
  *   - table Empty Lua table to store
  *
  * Output:
- *   nothing
+ *   - string|noting Error message in case of an error
  */
-static void iterate_object(lua_State *L, json_t *object)
+static int iterate_object(lua_State *L, json_t *object)
 {
 	const char *key;
 	json_t *value;
 	json_object_foreach(object, key, value) {
 		lua_pushstring(L, key);
-		push_json_value(L, value);
+		if (push_json_value(L, value) == 2) {
+			lua_remove(L, -2);
+			lua_remove(L, -2);
+			return 1;
+		}
 		lua_settable(L, -3);
 	}
+	return 0;
 }
 
 /**
@@ -343,7 +371,7 @@ static json_t **make_json_value_storage(lua_State *L)
  *
  * @param lua_State* L Lua stack
  *
- * @return int 1
+ * @return int
  *
  * === Lua stack ===
  *
@@ -352,13 +380,14 @@ static json_t **make_json_value_storage(lua_State *L)
  *   - [2] table|boolean|string|number Value to encode
  *
  * Output:
- *   - string JSON string
+ *   - string|nil                      JSON string or nil in case of an error
+ *   - string|nothing                  Error message, if any
  */
 static int encode(lua_State *L)
 {
 	int cnt = lua_gettop(L);
 	if (cnt != 2) {
-		lua_pushfstring(L, "json encode: 2 parameters expected, got %d", cnt);
+		lua_pushfstring(L, "JSON encode: 2 parameters expected, got %d", cnt);
 		lua_error(L);
 	}
 	luaL_checkudata(L, 1, JSON_MODULE_META_NAME);
@@ -370,19 +399,23 @@ static int encode(lua_State *L)
 	json_t **p_root = make_json_value_storage(L);
 
 	lua_pushvalue(L, 2);
-	*p_root = make_json_value(L);
-	char *str = json_dumps(*p_root, JSON_ENCODE_ANY);
-
-	if (str == NULL) {
-		lua_pushliteral(L, "json encode failed");
-		lua_error(L);
+	int rnum = make_json_value(L, p_root);
+	if (rnum == 0) {
+		char *str = json_dumps(*p_root, JSON_ENCODE_ANY);
+		if (str == NULL) {
+			lua_pushliteral(L, "JSON encode failed");
+			lua_error(L);
+		}
+		lua_pop(L, 1);
+		lua_pushstring(L, str);
+		free(str);
+		return 1;
 	}
 
-	lua_pushstring(L, str);
-	lua_replace(L, -2);
+	lua_pushnil(L);
+	lua_replace(L, -3);
 
-	free(str);
-	return 1;
+	return 2;
 }
 
 /**
@@ -392,7 +425,7 @@ static int encode(lua_State *L)
  * @param const char* str JSON string to decode
  * @param size_t      len JSON string length
  *
- * @return int 1
+ * @return int
  *
  * === Lua stack ===
  *
@@ -400,26 +433,33 @@ static int encode(lua_State *L)
  *   - userdata JSON module structure
  *
  * Output:
- *   - table|boolean|string|number
+ *   - table|boolean|string|number|nil Result or nil in case of an error
+ *   - string|nil                      Error message in case of an error
  */
-static void decode_string(lua_State *L, const char *str, size_t len)
+static int decode_string(lua_State *L, const char *str, size_t len)
 {
 	ensure_structures(L);
 
 	json_error_t error;
 	json_t **p_root = make_json_value_storage(L);
+	int stor_pos = lua_gettop(L);
 	if (len == 0) {
 		*p_root = json_loads(str, JSON_DECODE_ANY, &error);
 	} else {
 		*p_root = json_loadb(str, len, JSON_DECODE_ANY, &error);
 	}
-	if (*p_root == NULL) {
-		lua_pushfstring(L, "json decode error: on line %d: %s", error.line, error.text);
-		lua_error(L);
-	}
 
-	push_json_value(L, *p_root);
-	lua_replace(L, -2);
+	int rcnt;
+	if (*p_root != NULL) {
+		rcnt = push_json_value(L, *p_root);
+	} else {
+		lua_pushnil(L);
+		lua_pushfstring(L, "JSON decode error: on line %d: %s", error.line, error.text);
+		rcnt = 2;
+	}
+	lua_remove(L, stor_pos);
+
+	return rcnt;
 }
 
 /**
@@ -429,7 +469,7 @@ static void decode_string(lua_State *L, const char *str, size_t len)
  * @param const char* str JSON string to decode
  * @param size_t      len JSON string length
  *
- * @return void
+ * @return int
  *
  * === Lua stack ===
  *
@@ -437,13 +477,16 @@ static void decode_string(lua_State *L, const char *str, size_t len)
  *   nothing
  *
  * Output:
- *   - table|boolean|string|number
+ *   - table|boolean|string|number|nil Result or nil in case of an error
+ *   - string|nil                      Error message in case of an error
  */
-void json_decode_string(lua_State *L, const char *str, size_t len)
+int json_decode_string(lua_State *L, const char *str, size_t len)
 {
 	json_init(L);
-	decode_string(L, str, len);
-	lua_replace(L, -2);
+	int mod_pos = lua_gettop(L);
+	int rcnt = decode_string(L, str, len);
+	lua_remove(L, mod_pos);
+	return rcnt;
 }
 
 /**
@@ -467,11 +510,8 @@ static int decode(lua_State *L)
 	luaL_checkudata(L, 1, JSON_MODULE_META_NAME);
 	const char *str = luaL_checkstring(L, 2);
 
-	lua_settop(L, 2);
 	lua_insert(L, 1);
-	decode_string(L, str, luaL_len(L, 1));
-
-	return 1;
+	return decode_string(L, str, luaL_len(L, 1));
 }
 
 /**

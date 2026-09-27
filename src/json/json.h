@@ -5,8 +5,10 @@ extern "C"
 {
 #endif
 
+#include "../lua.h"
+
 int json_init(lua_State *L);
-void json_decode_string(lua_State *L, const char *str, size_t len);
+int json_decode_string(lua_State *L, const char *str, size_t len);
 
 #ifdef __cplusplus
 }

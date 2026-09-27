@@ -14,7 +14,7 @@ static void call_method(const char *fname)
 	lua_getfield(L, -1, fname);
 	lua_insert(L, -3);
 	lua_insert(L, -2);
-	lua_call(L, 2, 1);
+	lua_call(L, 2, 2);
 }
 
 static void decode(void)
@@ -74,20 +74,23 @@ START_TEST(test_json_decode_numbers_array_with_hole)
 {
 	lua_pushliteral(L, "[0, 1.01, null, 3, -4]");
 	decode();
-	ck_assert_int_eq(LUA_TTABLE, lua_type(L, -1));
+	const int rpos = -2;
+	const int epos = -1;
+	ck_assert_int_eq(LUA_TTABLE, lua_type(L, rpos));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, epos));
 	// Size of the table
-	ck_assert_int_eq(5, luaL_len(L, -1));
+	ck_assert_int_eq(5, luaL_len(L, rpos));
 	// Number of keys
 	int cnt = 0;
 	lua_pushnil(L);
-	while (lua_next(L, -2) != 0) {
+	while (lua_next(L, -3) != 0) {
 		++cnt;
 		lua_pop(L, 1);
 	}
 	ck_assert_msg(cnt == 4, "Incorrect number of keys");
 	// Values
 	for (int i = 1; i <= 5; ++i) {
-		lua_rawgeti(L, -1, i);
+		lua_rawgeti(L, rpos, i);
 		if (i != 3) {
 			ck_assert_msg(lua_type(L, -1) == LUA_TNUMBER, "Incorrect value type for key %d", i);
 		}
@@ -119,8 +122,19 @@ START_TEST(test_json_decode_complex_array)
 {
 	lua_pushliteral(L, "{\"a\": 1, \"b\": \"2\", \"3\": false, \"7\": true}");
 	decode();
-	ck_assert_int_eq(LUA_TTABLE, lua_type(L, -1));
+	ck_assert_int_eq(LUA_TTABLE, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+	lua_pop(L, 1);
 	check_complex_table();
+}
+END_TEST
+
+START_TEST(test_json_decode_error)
+{
+	lua_pushliteral(L, "{{");
+	decode();
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TSTRING, lua_type(L, -1));
 }
 END_TEST
 
@@ -128,8 +142,9 @@ START_TEST(test_json_encode_string)
 {
 	lua_pushliteral(L, "test string");
 	encode();
-	ck_assert_int_eq(LUA_TSTRING, lua_type(L, -1));
-	ck_assert_str_eq("\"test string\"", lua_tostring(L, -1));
+	ck_assert_int_eq(LUA_TSTRING, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+	ck_assert_str_eq("\"test string\"", lua_tostring(L, -2));
 }
 END_TEST
 
@@ -142,8 +157,9 @@ START_TEST(test_json_encode_numbers_array)
 	lua_pushinteger(L, 2);   lua_rawseti(L, -2, ++i);
 	lua_pushinteger(L, 3);   lua_rawseti(L, -2, ++i);
 	encode();
-	ck_assert_int_eq(LUA_TSTRING, lua_type(L, -1));
-	ck_assert_str_eq("[0, 1.01, 2, 3]", lua_tostring(L, -1));
+	ck_assert_int_eq(LUA_TSTRING, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+	ck_assert_str_eq("[0, 1.01, 2, 3]", lua_tostring(L, -2));
 }
 END_TEST
 
@@ -154,8 +170,9 @@ START_TEST(test_json_encode_numbers_array_with_hole)
 	lua_pushnumber(L, 1.01); lua_rawseti(L, -2, 2);
 	lua_pushnumber(L, 3.98); lua_rawseti(L, -2, 4);
 	encode();
-	ck_assert_int_eq(LUA_TSTRING, lua_type(L, -1));
-	ck_assert_str_eq("[0, 1.01, null, 3.98]", lua_tostring(L, -1));
+	ck_assert_int_eq(LUA_TSTRING, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+	ck_assert_str_eq("[0, 1.01, null, 3.98]", lua_tostring(L, -2));
 }
 END_TEST
 
@@ -167,9 +184,12 @@ START_TEST(test_json_encode_complex_array)
 	lua_pushboolean(L, false); lua_rawseti(L, -2, 3);
 	lua_pushboolean(L, true);  lua_rawseti(L, -2, 7);
 	encode();
-	ck_assert_int_eq(LUA_TSTRING, lua_type(L, -1));
+	ck_assert_int_eq(LUA_TSTRING, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+	lua_pop(L, 1);
 	// Decode the string back to check
 	decode();
+	lua_pop(L, 1);
 	check_complex_table();
 }
 END_TEST
@@ -190,8 +210,31 @@ START_TEST(test_json_encode_nested_arrays)
 	lua_pushliteral(L, "0");   lua_rawseti(L, -2, ++k);
 	lua_rawseti(L, -2, ++i);
 	encode();
+	ck_assert_int_eq(LUA_TSTRING, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+	ck_assert_str_eq("[1, true, false, \"2\", [3, false, true, \"0\"]]", lua_tostring(L, -2));
+}
+END_TEST
+
+START_TEST(test_json_encode_unsupported_type)
+{
+	lua_newtable(L);
+	lua_pushliteral(L, "key"); lua_newthread(L); lua_rawset(L, -3);
+	encode();
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -2));
 	ck_assert_int_eq(LUA_TSTRING, lua_type(L, -1));
-	ck_assert_str_eq("[1, true, false, \"2\", [3, false, true, \"0\"]]", lua_tostring(L, -1));
+	ck_assert_str_eq("JSON: unsupported data type: thread", lua_tostring(L, -1));
+}
+END_TEST
+
+START_TEST(test_json_encode_incorrect_key)
+{
+	lua_newtable(L);
+	lua_newtable(L); lua_pushinteger(L, 999); lua_rawset(L, -3);
+	encode();
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TSTRING, lua_type(L, -1));
+	ck_assert_str_eq("JSON: incorrect key type: table", lua_tostring(L, -1));
 }
 END_TEST
 
@@ -200,7 +243,18 @@ START_TEST(test_json_external_calls)
 	const char *jstr = "{\"a\": 1, \"b\": \"2\", \"3\": false, \"7\": true}";
 	json_decode_string(L, jstr, strlen(jstr));
 	ck_assert_int_eq(LUA_TTABLE, lua_type(L, -1));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -2));
 	check_complex_table();
+}
+END_TEST
+
+START_TEST(test_json_external_calls_invalid_str)
+{
+	const char *jstr = "{{";
+	int rcnt = json_decode_string(L, jstr, strlen(jstr));
+	ck_assert_int_eq(2, rcnt);
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TSTRING, lua_type(L, -1));
 }
 END_TEST
 
@@ -217,6 +271,7 @@ Suite *json_suite(void)
 	tcase_add_checked_fixture(tc_decode, setup, teardown);
 	tcase_add_test(tc_decode, test_json_decode_numbers_array_with_hole);
 	tcase_add_test(tc_decode, test_json_decode_complex_array);
+	tcase_add_test(tc_decode, test_json_decode_error);
 	suite_add_tcase(s, tc_decode);
 
 	TCase *tc_encode = tcase_create("Encode");
@@ -226,11 +281,14 @@ Suite *json_suite(void)
 	tcase_add_test(tc_encode, test_json_encode_numbers_array_with_hole);
 	tcase_add_test(tc_encode, test_json_encode_complex_array);
 	tcase_add_test(tc_encode, test_json_encode_nested_arrays);
+	tcase_add_test(tc_encode, test_json_encode_unsupported_type);
+	tcase_add_test(tc_encode, test_json_encode_incorrect_key);
 	suite_add_tcase(s, tc_encode);
 
 	TCase *tc_external = tcase_create("External");
 	tcase_add_checked_fixture(tc_external, setup, teardown);
 	tcase_add_test(tc_external, test_json_external_calls);
+	tcase_add_test(tc_external, test_json_external_calls_invalid_str);
 	suite_add_tcase(s, tc_external);
 	return s;
 }
