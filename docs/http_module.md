@@ -273,7 +273,7 @@ table
 
 ### headers()
 
-Returns HTTP headers from the server response. If the name parameter is specified, the method returns the header value with the specified name. Note that you need set the headers field to true for the response table in the request parameters. See the example bellow.
+Returns HTTP headers from the server response. If the name argument is specified, the method returns the header value with the specified name. Note that you need set the headers field to true for the response table in the request parameters. See the example bellow.
 
 Arguments:
 

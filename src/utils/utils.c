@@ -45,7 +45,7 @@ static int trim(lua_State *L)
 {
 	int cnt = lua_gettop(L);
 	if (cnt != 1) {
-		lua_pushfstring(L, "The function expects 1 parameter, got %d", cnt);
+		lua_pushfstring(L, "The function expects 1 argument, got %d", cnt);
 		lua_error(L);
 	}
 	const char *start = luaL_checkstring(L, 1);
@@ -81,7 +81,7 @@ static int base64dec(lua_State *L)
 {
 	int cnt = lua_gettop(L);
 	if (cnt != 1) {
-		lua_pushfstring(L, "The function expects 1 paremeter, %d passed", cnt);
+		lua_pushfstring(L, "The function expects 1 argument, %d passed", cnt);
 		lua_error(L);
 	}
 	const char *str = luaL_checkstring(L, 1);
@@ -121,7 +121,7 @@ static int base64enc(lua_State *L)
 {
 	int cnt = lua_gettop(L);
 	if (cnt != 1) {
-		lua_pushfstring(L, "The function expects 1 paremeter, %d passed", cnt);
+		lua_pushfstring(L, "The function expects 1 argument, %d passed", cnt);
 		lua_error(L);
 	}
 	const char *str = luaL_checkstring(L, 1);

@@ -387,7 +387,7 @@ static int encode(lua_State *L)
 {
 	int cnt = lua_gettop(L);
 	if (cnt != 2) {
-		lua_pushfstring(L, "JSON encode: 2 parameters expected, got %d", cnt);
+		lua_pushfstring(L, "JSON encode: 2 arguments expected, got %d", cnt);
 		lua_error(L);
 	}
 	luaL_checkudata(L, 1, JSON_MODULE_META_NAME);

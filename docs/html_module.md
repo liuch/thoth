@@ -119,7 +119,7 @@ Methods:
 
 ### attribute()
 
-The method returns the value of the attribute with the name passed as a parameter.
+The method returns the value of the attribute with the name passed as an argument.
 The method returns nil if the node is not an element or does not contain the specified attribute.
 
 Arguments:

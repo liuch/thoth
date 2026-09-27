@@ -64,7 +64,7 @@ static const char* get_error_string(CURLcode error_num, const struct curl_data *
 }
 
 /**
- * Check if the given parameter is a curl_data structure and socket is not closed
+ * Check if the given argument is a curl_data structure and socket is not closed
  *
  * @param lua_State* L           Lua stack
  * @param int        param_index The stack position the socket object is at

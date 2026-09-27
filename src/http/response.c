@@ -121,7 +121,7 @@ static int get_response_html(lua_State *L)
 /**
  * Returns the HTTP headers from the HTTP response object
  *
- * When the second parameter is specified the function returns
+ * When the second argument is specified the function returns
  * the value of the header with the passed name as a Lua string.
  * Otherwise, the function returns a Lua key-value table with the headers
  * or nothing if the response has no headers.
@@ -143,7 +143,7 @@ static int get_response_headers(lua_State *L)
 {
 	int args = lua_gettop(L);
 	if (args < 1 || args > 2) {
-		lua_pushliteral(L, "The function expects one or two parameters");
+		lua_pushliteral(L, "The function expects one or two arguments");
 		lua_error(L);
 	}
 
@@ -190,7 +190,7 @@ static int get_response_headers(lua_State *L)
 static int get_response_cookies(lua_State *L)
 {
 	if (lua_gettop(L) != 1) {
-		lua_pushliteral(L, "The function expects one parameter");
+		lua_pushliteral(L, "The function expects one argument");
 		lua_error(L);
 	}
 

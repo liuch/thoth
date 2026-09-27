@@ -84,7 +84,7 @@ START_TEST(test_utils_trim_whitespaces_left_right)
 }
 END_TEST
 
-START_TEST(test_utils_trim_without_parameter)
+START_TEST(test_utils_trim_without_argument)
 {
 	get_method("trim");
 	ck_assert_int_ne(LUA_OK, lua_pcall(L, 0, 0, 0));
@@ -143,7 +143,7 @@ START_TEST(test_utils_b64dec_two_zero_bytes)
 }
 END_TEST
 
-START_TEST(test_utils_b64dec_without_parameter)
+START_TEST(test_utils_b64dec_without_argument)
 {
 	get_method("base64dec");
 	ck_assert_int_ne(LUA_OK, lua_pcall(L, 0, 0, 0));
@@ -193,7 +193,7 @@ START_TEST(test_utils_b64enc_two_zero_bytes)
 }
 END_TEST
 
-START_TEST(test_utils_b64enc_without_parameter)
+START_TEST(test_utils_b64enc_without_argument)
 {
 	get_method("base64enc");
 	ck_assert_int_ne(LUA_OK, lua_pcall(L, 0, 0, 0));
@@ -225,7 +225,7 @@ Suite *utils_suite(void)
 	tcase_add_test(tc_trim, test_utils_trim_whitespaces_right);
 	tcase_add_test(tc_trim, test_utils_trim_only_whitespaces);
 	tcase_add_test(tc_trim, test_utils_trim_whitespaces_left_right);
-	tcase_add_test(tc_trim, test_utils_trim_without_parameter);
+	tcase_add_test(tc_trim, test_utils_trim_without_argument);
 	tcase_add_test(tc_trim, test_utils_trim_with_not_string);
 	suite_add_tcase(s, tc_trim);
 
@@ -237,7 +237,7 @@ Suite *utils_suite(void)
 	tcase_add_test(tc_b64dec, test_utils_b64dec_one_byte);
 	tcase_add_test(tc_b64dec, test_utils_b64dec_two_bytes_trim);
 	tcase_add_test(tc_b64dec, test_utils_b64dec_two_zero_bytes);
-	tcase_add_test(tc_b64dec, test_utils_b64dec_without_parameter);
+	tcase_add_test(tc_b64dec, test_utils_b64dec_without_argument);
 	tcase_add_test(tc_b64dec, test_utils_b64dec_with_not_string);
 
 	TCase *tc_b64enc = tcase_create("B64enc");
@@ -247,7 +247,7 @@ Suite *utils_suite(void)
 	tcase_add_test(tc_b64enc, test_utils_b64enc_two_bytes);
 	tcase_add_test(tc_b64enc, test_utils_b64enc_one_byte);
 	tcase_add_test(tc_b64enc, test_utils_b64enc_two_zero_bytes);
-	tcase_add_test(tc_b64enc, test_utils_b64enc_without_parameter);
+	tcase_add_test(tc_b64enc, test_utils_b64enc_without_argument);
 	tcase_add_test(tc_b64enc, test_utils_b64enc_with_not_string);
 	suite_add_tcase(s, tc_b64enc);
 
