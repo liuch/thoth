@@ -7,6 +7,7 @@
 #include "../json/json.h"
 #include "../html/html.h"
 #include "response.h"
+#include "libcurl.h"
 
 #define HTTP_RESP_META_NAME "thoth.http.response"
 
@@ -329,7 +330,7 @@ void response_saveheaders(lua_State *L, struct http_resp *resp, CURL *handle)
 	while ((h = curl_easy_nextheader(handle, CURLH_HEADER, -1, prev))) {
 		char *name = my_strdup(h->name);
 		if (name == NULL) {
-			throw_out_of_memory(L, "get_response_headers");
+			throw_out_of_memory(L, "response_saveheaders");
 		}
 		for (char *p = name; *p; ++p) *p = tolower(*p);
 		lua_pushstring(L, name);
@@ -364,24 +365,7 @@ void response_savecookies(lua_State *L, struct http_resp *resp, CURL *handle)
 	assert(handle != NULL);
 	assert(resp->cookies_ref == LUA_REFNIL);
 
-	struct curl_slist *cookies = NULL;
-	if (curl_easy_getinfo(handle, CURLINFO_COOKIELIST, &cookies) != CURLE_OK) {
-		lua_pushliteral(L, "curl_easy_getinfo failed");
-		lua_error(L);
-	}
-
 	lua_newtable(L);
-
-	if (cookies != NULL) {
-		int i = 0;
-		struct curl_slist *it = cookies;
-		do {
-			lua_pushstring(L, it->data);
-			lua_rawseti(L, -2, ++i);
-			it = it->next;
-		} while (it != NULL);
-		curl_slist_free_all(cookies);
-	}
-
+	libcurl_save_cookies(L, lua_absindex(L, -1), handle);
 	resp->cookies_ref = luaL_ref(L, LUA_REGISTRYINDEX);
 }

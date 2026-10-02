@@ -59,8 +59,7 @@ static int socket_fetch(int num_params)
 	ck_assert_int_eq(LUA_TFUNCTION, lua_type(L, -1));
 	lua_pushvalue(L, p_idx - 1);
 	lua_rotate(L, p_idx, 2);
-	int res = lua_pcall(L, num_params + 1, 1, 0);
-	if (res == LUA_OK) ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -1));
+	int res = lua_pcall(L, num_params + 1, 2, 0);
 	return res;
 }
 
@@ -321,6 +320,26 @@ START_TEST(test_http_unescape)
 }
 END_TEST
 
+START_TEST(test_fqdn_unreachable)
+{
+	get_socket();
+	lua_pushstring(L, "http://example.invalid/");
+	socket_fetch(1);
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TSTRING, lua_type(L, -1));
+}
+END_TEST
+
+START_TEST(test_server_unreachable)
+{
+	get_socket();
+	lua_pushstring(L, "http://255.255.255.255/");
+	socket_fetch(1);
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TSTRING, lua_type(L, -1));
+}
+END_TEST
+
 START_TEST(test_http_query_simple)
 {
 	tcpserver_start("HTTP/1.1 200 OK\nConnection: close\n\nHello!", 0);
@@ -330,6 +349,10 @@ START_TEST(test_http_query_simple)
 	socket_fetch(1);
 
 	tcpserver_destroy();
+
+	ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+	lua_pop(L, 1);
 
 	ck_assert(resp_ok());
 	ck_assert(!resp_error());
@@ -348,6 +371,10 @@ START_TEST(test_http_query_error)
 
 	tcpserver_destroy();
 
+	ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+	lua_pop(L, 1);
+
 	ck_assert(!resp_ok());
 	ck_assert_int_eq(404, resp_status());
 }
@@ -365,6 +392,10 @@ START_TEST(test_http_query_counter_increment)
 
 	tcpserver_destroy();
 
+	ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+	lua_pop(L, 1);
+
 	lua_getfield(L, -2, "queries");
 	ck_assert_int_eq(LUA_TNUMBER, lua_type(L, -1));
 	ck_assert_int_eq(112, lua_tointeger(L, -1));
@@ -380,6 +411,10 @@ START_TEST(test_http_query_get_content_twice)
 	socket_fetch(1);
 
 	tcpserver_destroy();
+
+	ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+	lua_pop(L, 1);
 
 	ck_assert_str_eq("Hello!", resp_text());
 	ck_assert_str_eq("", resp_text());
@@ -398,6 +433,10 @@ START_TEST(test_http_query_get_html_content)
 	socket_fetch(1);
 
 	tcpserver_destroy();
+
+	ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+	lua_pop(L, 1);
 
 	lua_getfield(L, -1, "html");
 	ck_assert_int_eq(LUA_TFUNCTION, lua_type(L, -1));
@@ -420,6 +459,10 @@ START_TEST(test_http_get_header_list)
 	socket_fetch(2);
 
 	tcpserver_destroy();
+
+	ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+	lua_pop(L, 1);
 
 	resp_headers(NULL);
 	int keys_found = 0;
@@ -457,6 +500,10 @@ START_TEST(test_http_get_header_by_name)
 
 	tcpserver_destroy();
 
+	ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+	lua_pop(L, 1);
+
 	resp_headers("uSeR-hEaDeR1");
 	ck_assert_str_eq("Header1Value", lua_tostring(L, -1));
 	lua_pop(L, 1);
@@ -482,6 +529,10 @@ START_TEST(test_http_get_header_list_without_param)
 
 	tcpserver_destroy();
 
+	ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+	lua_pop(L, 1);
+
 	resp_headers(NULL);
 	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
 	lua_pop(L, 1);
@@ -500,6 +551,10 @@ START_TEST(test_http_get_header_by_name_without_param)
 	socket_fetch(1);
 
 	tcpserver_destroy();
+
+	ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+	lua_pop(L, 1);
 
 	resp_headers("User-Header1");
 	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
@@ -525,6 +580,9 @@ START_TEST(test_http_set_header)
 
 	tcpserver_stop();
 
+	ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+
 	const char *query = tcpserver_get_query(NULL);
 	ck_assert(header_exists_in_query("User-Header1", "strval", query));
 	ck_assert(header_exists_in_query("User-Header2", "-123", query));
@@ -544,6 +602,9 @@ START_TEST(test_http_set_useragent)
 	socket_fetch(1);
 
 	tcpserver_stop();
+
+	ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
 
 	ck_assert(header_exists_in_query("user-agent", "my UA", tcpserver_get_query(NULL)));
 
@@ -566,6 +627,9 @@ START_TEST(test_http_set_useragent_with_headers)
 
 	tcpserver_stop();
 
+	ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+
 	const char *query = tcpserver_get_query(NULL);
 	ck_assert(header_exists_in_query("user-agent", "my UA", query));
 
@@ -582,6 +646,9 @@ START_TEST(test_http_default_useragent)
 	socket_fetch(1);
 
 	tcpserver_stop();
+
+	ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
 
 	char app_str[32];
 	snprintf(app_str, sizeof(app_str), "%s/%s", APP_NAME, APP_VERSION);
@@ -606,6 +673,10 @@ START_TEST(test_http_get_cookies)
 
 	tcpserver_destroy();
 
+	ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+	lua_pop(L, 1);
+
 	resp_cookies();
 	ck_assert_int_eq(LUA_TTABLE, lua_type(L, -1));
 	ck_assert_int_eq(2, luaL_len(L, -1));
@@ -625,7 +696,7 @@ START_TEST(test_http_just_switch_cookie_jar)
 	lua_pop(L, 2);
 	tcpserver_start("HTTP/1.1 200 OK\n\nHello!", 0);
 	push_url();
-	socket_fetch(1); lua_pop(L, 1);
+	socket_fetch(1); lua_pop(L, 2);
 	tcpserver_destroy();
 
 	ck_assert_int_eq(LUA_OK, socket_setcookiejar("local_jar2_fake", 0));
@@ -643,7 +714,7 @@ START_TEST(test_http_just_switch_cookie_jar)
 	lua_pop(L, 2);
 	tcpserver_start("HTTP/1.1 200 OK\n\nHello!", 0);
 	push_url();
-	socket_fetch(1); lua_pop(L, 1);
+	socket_fetch(1); lua_pop(L, 2);
 	tcpserver_destroy();
 
 	ck_assert_int_eq(LUA_OK, socket_setcookiejar("global_jar3", 1));
@@ -654,7 +725,7 @@ START_TEST(test_http_just_switch_cookie_jar)
 	lua_pop(L, 2);
 	tcpserver_start("HTTP/1.1 200 OK\n\nHello!", 0);
 	push_url();
-	socket_fetch(1); lua_pop(L, 1);
+	socket_fetch(1); lua_pop(L, 2);
 	tcpserver_destroy();
 
 	ck_assert_int_eq(LUA_OK, socket_setcookiejar(NULL, -1));
@@ -665,7 +736,7 @@ START_TEST(test_http_just_switch_cookie_jar)
 	lua_pop(L, 2);
 	tcpserver_start("HTTP/1.1 200 OK\n\nHello!", 0);
 	push_url();
-	socket_fetch(1); lua_pop(L, 1);
+	socket_fetch(1); lua_pop(L, 2);
 	tcpserver_destroy();
 }
 END_TEST
@@ -678,19 +749,19 @@ START_TEST(test_http_send_query_with_different_jars)
 	socket_setcookiejar("jar1", -1); lua_pop(L, 2);
 	tcpserver_start("HTTP/1.1 200 OK\nSet-Cookie: cname1=c1\n\nHello!", 0);
 	push_url();
-	socket_fetch(1); lua_pop(L, 1);
+	socket_fetch(1); lua_pop(L, 2);
 	tcpserver_destroy();
 	// Set cookies for jar2
 	socket_setcookiejar("jar2", -1); lua_pop(L, 2);
 	tcpserver_start("HTTP/1.1 200 OK\nSet-Cookie: cname2=c2\n\nHello!", 0);
 	push_url();
-	socket_fetch(1); lua_pop(L, 1);
+	socket_fetch(1); lua_pop(L, 2);
 	tcpserver_destroy();
 	// Check for cookies with no jar
 	socket_setcookiejar(NULL, -1); lua_pop(L, 2);
 	tcpserver_start("HTTP/1.1 200 OK\n\nHello!", 0);
 	push_url();
-	socket_fetch(1); lua_pop(L, 1);
+	socket_fetch(1); lua_pop(L, 2);
 	tcpserver_stop();
 	ck_assert(strcasestr(tcpserver_get_query(NULL), "\ncookie:") == 0);
 	tcpserver_destroy();
@@ -698,7 +769,7 @@ START_TEST(test_http_send_query_with_different_jars)
 	socket_setcookiejar("jar1", -1); lua_pop(L, 2);
 	tcpserver_start("HTTP/1.1 200 OK\n\nHello!", 0);
 	push_url();
-	socket_fetch(1); lua_pop(L, 1);
+	socket_fetch(1); lua_pop(L, 2);
 	tcpserver_stop();
 	ck_assert(cookie_exists_in_query("cname1", "c1", tcpserver_get_query(NULL)));
 	ck_assert(!cookie_exists_in_query("cname2", "c2", tcpserver_get_query(NULL)));
@@ -707,7 +778,7 @@ START_TEST(test_http_send_query_with_different_jars)
 	socket_setcookiejar("jar2", -1); lua_pop(L, 2);
 	tcpserver_start("HTTP/1.1 200 OK\n\nHello!", 0);
 	push_url();
-	socket_fetch(1); lua_pop(L, 1);
+	socket_fetch(1); lua_pop(L, 2);
 	tcpserver_stop();
 	ck_assert(!cookie_exists_in_query("cname1", "c1", tcpserver_get_query(NULL)));
 	ck_assert(cookie_exists_in_query("cname2", "c2", tcpserver_get_query(NULL)));
@@ -722,7 +793,7 @@ static bool exchange_cookies_between_sockets(int public, bool close_first)
 	socket_setcookiejar("jar_id", public); lua_pop(L, 2);
 	tcpserver_start("HTTP/1.1 200 OK\nSet-Cookie: cname1=c1\n\nHello!", 0);
 	push_url();
-	socket_fetch(1); lua_pop(L, 1);
+	socket_fetch(1); lua_pop(L, 2);
 	tcpserver_destroy();
 	if (close_first) {
 		socket_close();
@@ -732,7 +803,7 @@ static bool exchange_cookies_between_sockets(int public, bool close_first)
 	socket_setcookiejar("jar_id", public); lua_pop(L, 2);
 	tcpserver_start("HTTP/1.1 200 OK\n\nHello!", 0);
 	push_url();
-	socket_fetch(1); lua_pop(L, 1);
+	socket_fetch(1); lua_pop(L, 2);
 	tcpserver_stop();
 
 	return cookie_exists_in_query("cname1", "c1", tcpserver_get_query(NULL));
@@ -757,13 +828,13 @@ START_TEST(test_http_disable_cookie_engine)
 	socket_setcookiejar("jar3", -1); lua_pop(L, 2);
 	tcpserver_start("HTTP/1.1 200 OK\nSet-Cookie: cname3=c3\nSet-Cookie: cname4=c4\n\nHello!", 0);
 	push_url();
-	socket_fetch(1); lua_pop(L, 1);
+	socket_fetch(1); lua_pop(L, 2);
 	tcpserver_destroy();
 	// Disable the cookie engine
 	socket_setcookiejar(NULL, -1); lua_pop(L, 2);
 	tcpserver_start("HTTP/1.1 200 OK\n\nHello!", 0);
 	push_url();
-	socket_fetch(1); lua_pop(L, 1);
+	socket_fetch(1); lua_pop(L, 2);
 	tcpserver_stop();
 	ck_assert(!cookie_exists_in_query("cname3", "c3", tcpserver_get_query(NULL)));
 	ck_assert(!cookie_exists_in_query("cname4", "c4", tcpserver_get_query(NULL)));
@@ -785,6 +856,10 @@ START_TEST(test_http_get_cookies_without_jar_key)
 
 	tcpserver_destroy();
 
+	ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+	lua_pop(L, 1);
+
 	resp_cookies();
 	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
 }
@@ -803,6 +878,10 @@ START_TEST(test_http_get_cookies_without_params)
 	socket_fetch(1);
 
 	tcpserver_destroy();
+
+	ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -2));
+	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
+	lua_pop(L, 1);
 
 	resp_cookies();
 	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
@@ -904,6 +983,8 @@ Suite *http_suite(void)
 
 	TCase *tc_getq = tcase_create("Get queries");
 	tcase_add_checked_fixture(tc_getq, setup, teardown);
+	tcase_add_test(tc_getq, test_fqdn_unreachable);
+	tcase_add_test(tc_getq, test_server_unreachable);
 	tcase_add_test(tc_getq, test_http_query_simple);
 	tcase_add_test(tc_getq, test_http_query_error);
 	tcase_add_test(tc_getq, test_http_query_counter_increment);

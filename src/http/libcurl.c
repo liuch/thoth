@@ -20,7 +20,31 @@
 static void throw_setopt_error(lua_State *L, int error_code)
 {
 	const char *error_message = curl_easy_strerror(error_code);
-	lua_pushfstring(L, "setopt: %s (%i)\n", error_message, error_code);
+	lua_pushfstring(L, "Libcurl: setopt: %s (%i)", error_message, error_code);
+	lua_error(L);
+}
+
+/*
+ * Throws an error related to the curl_easy_getinfo() function
+ *
+ * @param lua_State* L          Lua stack
+ * @param int        error_code Error code
+ *
+ * @return void
+ *
+ * === Lua stack ===
+ *
+ * Input:
+ *   nothing
+ *
+ * Output:
+ *   nothing
+ */
+static void throw_getinfo_error(lua_State *L, int error_code)
+{
+	const char *error_message = curl_easy_strerror(error_code);
+	lua_pushfstring(L, "Libcurl: getinfo: %s (%i)", error_message, error_code);
+	lua_error(L);
 }
 
 /*
@@ -105,8 +129,7 @@ void libcurl_load_cookies(lua_State *L, int cookiejar_pos, CURL *handle)
 		CURLcode result = curl_easy_setopt(handle, CURLOPT_COOKIELIST, lua_tostring(L, -1));
 		lua_pop(L, 1);
 		if (result != CURLE_OK) {
-			lua_pushliteral(L, "Failed to set cookies");
-			lua_error(L);
+			throw_setopt_error(L, result);
 		}
 	}
 }
@@ -133,9 +156,9 @@ void libcurl_save_cookies(lua_State *L, int cookiejar_pos, CURL *handle)
 	assert(handle != NULL);
 
 	struct curl_slist *cookies = NULL;
-	if (curl_easy_getinfo(handle, CURLINFO_COOKIELIST, &cookies) != CURLE_OK) {
-		lua_pushliteral(L, "curl_easy_getinfo failed");
-		lua_error(L);
+	int result = curl_easy_getinfo(handle, CURLINFO_COOKIELIST, &cookies);
+	if (result != CURLE_OK) {
+		throw_getinfo_error(L, result);
 	}
 
 	if (cookies != NULL) {
@@ -148,4 +171,69 @@ void libcurl_save_cookies(lua_State *L, int cookiejar_pos, CURL *handle)
 		} while (it != NULL);
 		curl_slist_free_all(cookies);
 	}
+}
+
+/**
+ * Converts the passed string to a URL encoded string
+ *
+ * @param lua_State*   L       Lua stack
+ * @param const char*  str     Null-terminated string to escape
+ * @param size_t       str_len String length
+ * @param CURL*        handle  Curl handle
+ *
+ * @return int
+ *
+ * === Lua stack ===
+ *
+ * Input:
+ *   noting
+ *
+ * Output:
+ *   - string
+ */
+int libcurl_escape(lua_State *L, const char *str, size_t str_len, CURL *handle)
+{
+	char *res_str = curl_easy_escape(handle, str, str_len);
+	if (res_str == NULL) {
+		lua_pushliteral(L, "Libcurl: curl_easy_escape failed");
+		lua_error(L);
+	}
+
+	lua_pushstring(L, res_str);
+	curl_free(res_str);
+
+	return 1;
+}
+
+/**
+ * Converts the passed URL encoded string to a plain string
+ *
+ * @param lua_State*   L       Lua stack
+ * @param const char*  str     Null-terminated string to unescape
+ * @param size_t       str_len String length
+ * @param CURL*        handle  Curl handle
+ *
+ * @return int
+ *
+ * === Lua stack ===
+ *
+ * Input:
+ *   nothing
+ *
+ * Output:
+ *   - string
+ */
+int libcurl_unescape(lua_State *L, const char *str, size_t str_len, CURL *handle)
+{
+	int res_len;
+	char *res_str = curl_easy_unescape(handle, str, str_len, &res_len);
+	if (res_str == NULL) {
+		lua_pushliteral(L, "Libcurl: curl_easy_unescape failed");
+		lua_error(L);
+	}
+
+	lua_pushlstring(L, res_str, res_len);
+	curl_free(res_str);
+
+	return 1;
 }

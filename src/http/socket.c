@@ -25,6 +25,25 @@ struct curl_data {
 };
 
 /**
+ * Returns a string message of the last error
+ *
+ * @param CURLcode          error_num Error code
+ * @param struct curl_data* cdata     Socket data structure
+ *
+ * @return const char*
+ */
+static const char* get_error_message(CURLcode error_code, const struct curl_data *cdata)
+{
+	if (cdata->error[0] != '\0') {
+		return cdata->error;
+	}
+
+	const char *err_message = curl_easy_strerror(error_code);
+
+	return err_message != NULL ? err_message : "libcurl unknown error";
+}
+
+/**
  * Throws an error related to setting connection options
  *
  * @param lua_State*  L           Lua stack
@@ -41,26 +60,11 @@ struct curl_data {
  * Output:
  *   nothing
  */
-static void throw_setopt_error(lua_State *L, int err_code, const char *err_message)
+static void throw_setopt_error(lua_State *L, int err_code, const struct curl_data *cdata)
 {
-	lua_pushfstring(L, "setopt: %s (%d)\n", err_message, err_code);
+	const char *err_message = get_error_message(err_code, cdata);
+	lua_pushfstring(L, "Libcurl: setopt: %s (%d)", err_message, err_code);
 	lua_error(L);
-}
-
-/**
- * Returns a string message of the last error
- *
- * @param CURLcode          error_num Error code
- * @param struct curl_data* cdata     Socket data structure
- *
- * @return const char*
- */
-static const char* get_error_string(CURLcode error_num, const struct curl_data *cdata)
-{
-	if (cdata->error[0] != '\0') {
-		return cdata->error;
-	}
-	return curl_easy_strerror(error_num);
 }
 
 /**
@@ -150,13 +154,13 @@ void socket_create(lua_State *L)
 	// Init curl socket
 	cdata->handle = curl_easy_init();
 	if (cdata->handle == NULL) {
-		lua_pushliteral(L, "curl_easy_init failed");
+		lua_pushliteral(L, "Libcurl: curl_easy_init failed");
 		lua_error(L);
 	}
 	// Set curl error buffer
 	CURLcode res = curl_easy_setopt(cdata->handle, CURLOPT_ERRORBUFFER, cdata->error);
 	if (res != CURLE_OK) {
-		throw_setopt_error(L, res, get_error_string(res, cdata));
+		throw_setopt_error(L, res, cdata);
 	}
 
 	// Socket userdata table
@@ -225,7 +229,7 @@ static int set_opt(lua_State *L)
 	const char *val = lua_isnoneornil(L, 3) ? NULL : luaL_checkstring(L, 3);
 	CURLcode res = curl_easy_setopt(cdata->handle, opt_num, val);
 	if (res != CURLE_OK) {
-		throw_setopt_error(L, res, get_error_string(res, cdata));
+		throw_setopt_error(L, res, cdata);
 	}
 
 	if (custom_ua) {
@@ -331,7 +335,9 @@ static void set_user_headers(lua_State *L, int t_index, struct curl_data *cdata)
 						default:
 							lua_pushfstring(
 								L,
-								"Incorrect type of the header value: %s",
+								"Invalid value type for HTTP header %s."
+								" Expected string, number or boolean, got %s",
+								key,
 								lua_typename(L, vtype)
 							);
 							lua_error(L);
@@ -417,7 +423,13 @@ static long set_http_fields(lua_State *L, int data_index, struct curl_data *cdat
 				v_size = 0;
 				break;
 			default:
-				lua_pushfstring(L, "Incorrect type of the body value: %s [%s]", k_str, lua_typename(L, v_type));
+				lua_pushfstring(
+					L,
+					"Invalid value type for form field %s."
+					" Expected string, number or boolean, got %s",
+					k_str,
+					lua_typename(L, v_type)
+				);
 				lua_error(L);
 		}
 
@@ -502,7 +514,14 @@ static void set_http_mime(lua_State *L, int data_index, struct curl_data *cdata)
 				v_size = CURL_ZERO_TERMINATED;
 				break;
 			default:
-				lua_pushfstring(L, "Incorrect type of the body value: %s [%s]", k_str, lua_typename(L, v_type));
+				lua_pushfstring(
+					L,
+					"MIME serialization error."
+					" Unsupported type for part %s."
+					" Expected string, number or boolean, got %s",
+					k_str,
+					lua_typename(L, v_type)
+				);
 				lua_error(L);
 		}
 		curl_mimepart *part = curl_mime_addpart(cdata->multipart_data);
@@ -536,7 +555,7 @@ static void set_http_method_params(lua_State *L, int params_index, struct curl_d
 	int top = lua_gettop(L);
 
 	int type = lua_getfield(L, params_index, "method");
-	CURLcode res;
+	CURLcode res = CURLE_OK;
 	const char* method;
 	if (type != LUA_TSTRING || strcasecmp(method = lua_tostring(L, -1), "get") == 0) {
 		res = curl_easy_setopt(cdata->handle, CURLOPT_HTTPGET, 1);
@@ -548,7 +567,12 @@ static void set_http_method_params(lua_State *L, int params_index, struct curl_d
 		} else if (bt_type == LUA_TSTRING) {
 			bt_val = lua_tostring(L, -1);
 		} else {
-			lua_pushliteral(L, "Incorrect parameter bodyType");
+			lua_pushfstring(
+				L,
+				"Invalid data type for options.bodyType."
+				" Expected \"fields\", \"mime\" or nil, got %s",
+				lua_typename(L, bt_type)
+			);
 			lua_error(L);
 		}
 		int bv_type = lua_getfield(L, params_index, "body");
@@ -575,7 +599,12 @@ static void set_http_method_params(lua_State *L, int params_index, struct curl_d
 					res = curl_easy_setopt(cdata->handle, CURLOPT_POSTFIELDS, cdata->fields_data.pointer);
 				}
 			} else {
-				lua_pushliteral(L, "HTTP: Incorrect parameter body");
+				lua_pushfstring(
+					L,
+					"Invalid data type for options.body."
+					" Expected string or table, got %s",
+					lua_typename(L, bv_type)
+				);
 				lua_error(L);
 			}
 		} else if (strcasecmp(bt_val, "mime") == 0) {
@@ -584,11 +613,21 @@ static void set_http_method_params(lua_State *L, int params_index, struct curl_d
 				set_http_mime(L, lua_gettop(L), cdata);
 				res = curl_easy_setopt(cdata->handle, CURLOPT_MIMEPOST, cdata->multipart_data);
 			} else {
-				lua_pushliteral(L, "HTTP: Incorrect parameter body");
+				lua_pushfstring(
+					L,
+					"Invalid data type for options.body."
+					" Expected table, got %s",
+					lua_typename(L, bv_type)
+				);
 				lua_error(L);
 			}
 		} else {
-			lua_pushfstring(L, "Unknown HTTP body type: %s", bt_val);
+			lua_pushfstring(
+				L,
+				"Invalid options.bodyType value: \"%s\"."
+				" Expected \"fields\", \"mime\" or nil",
+				bt_val
+			);
 			lua_error(L);
 		}
 
@@ -596,12 +635,12 @@ static void set_http_method_params(lua_State *L, int params_index, struct curl_d
 			res = curl_easy_setopt(cdata->handle, CURLOPT_POSTFIELDSIZE, size);
 		}
 	} else {
-		lua_pushfstring(L, "Unknown HTTP method: %s", method);
+		lua_pushfstring(L, "Unknown HTTP method \"%s\"", method);
 		lua_error(L);
 	}
 
 	if (res != CURLE_OK) {
-		throw_setopt_error(L, res, get_error_string(res, cdata));
+		throw_setopt_error(L, res, cdata);
 	}
 
 	lua_settop(L, top);
@@ -644,7 +683,7 @@ static void set_general_options(lua_State *L, struct curl_data *cdata)
 	return;
 
 error:
-	throw_setopt_error(L, res, get_error_string(res, cdata));
+	throw_setopt_error(L, res, cdata);
 }
 
 /**
@@ -856,7 +895,8 @@ static void before_fetch(lua_State *L, int socket_index)
  *
  * @param lua_State* L Lua stack
  *
- * @return int 1
+ * @return int 1 in case of a server response
+ *             2 in case of an error
  *
  * === Lua stack ===
  *
@@ -874,7 +914,8 @@ static void before_fetch(lua_State *L, int socket_index)
  *                                         For instance: { headers = true }. The valid values are "headers", "cookies".
  *
  * Output:
- *   - userdata HTTP responce object
+ *   - userdata|nil HTTP response object or nil if there is no response from the server
+ *   - string|nil   Error message in case of an error
  */
 static int fetch(lua_State *L)
 {
@@ -885,7 +926,7 @@ static int fetch(lua_State *L)
 
 	CURLcode res = curl_easy_setopt(cdata->handle, CURLOPT_URL, url);
 	if (res != CURLE_OK) {
-		throw_setopt_error(L, res, get_error_string(res, cdata));
+		throw_setopt_error(L, res, cdata);
 	}
 
 	if (!has_params) {
@@ -913,20 +954,21 @@ static int fetch(lua_State *L)
 
 	free_request_outgoing_data(cdata);
 
-	struct http_resp *resp = response_create(L);
-
 	long http_code;
-	if (res == CURLE_OK && (res = curl_easy_getinfo(cdata->handle, CURLINFO_RESPONSE_CODE, &http_code)) == CURLE_OK) {
-		if (http_code >= 200 && http_code <= 299) resp->ok = true;
-		resp->status = http_code;
-		resp->buffer.pointer = cdata->writebuffer.pointer;
-		resp->buffer.size = cdata->writebuffer.size;
-		cdata->writebuffer.pointer = NULL;
-		cdata->writebuffer.size = 0;
-	} else {
-		strncpy(resp->error, get_error_string(res, cdata), sizeof(resp->error));
-		resp->error[sizeof(resp->error) - 1] = '\0';
+	if (res != CURLE_OK || (res = curl_easy_getinfo(cdata->handle, CURLINFO_RESPONSE_CODE, &http_code)) != CURLE_OK) {
+		lua_pushnil(L);
+		lua_pushstring(L, get_error_message(res, cdata));
+		return 2;
 	}
+
+	struct http_resp *resp = response_create(L);
+	if (http_code >= 200 && http_code <= 299) resp->ok = true;
+	resp->status = http_code;
+	resp->buffer.pointer = cdata->writebuffer.pointer;
+	resp->buffer.size = cdata->writebuffer.size;
+	cdata->writebuffer.pointer = NULL;
+	cdata->writebuffer.size = 0;
+
 	if (http_want_list(L, 3, "headers")) {
 		response_saveheaders(L, resp, cdata->handle);
 	}
@@ -947,7 +989,8 @@ static int fetch(lua_State *L)
  * === Lua stack ===
  *
  * Input:
- *   - [1] string String to escape
+ *   - [1] userdata Socket object
+ *   - [2] string   String to escape
  *
  * Output:
  *   - string
@@ -957,14 +1000,7 @@ static int escape(lua_State *L)
 	struct curl_data *cdata = check_curl_data_param(L, 1);
 	const char *str = luaL_checkstring(L, 2);
 
-	char *res_str = curl_easy_escape(cdata->handle, str, luaL_len(L, 2));
-	if (res_str == NULL) {
-		lua_pushliteral(L, "curl_easy_escape failed");
-		lua_error(L);
-	}
-	lua_pushstring(L, res_str);
-	curl_free(res_str);
-	return 1;
+	return libcurl_escape(L, str, luaL_len(L, 2), cdata->handle);
 }
 
 /**
@@ -977,7 +1013,8 @@ static int escape(lua_State *L)
  * === Lua stack ===
  *
  * Input:
- *   - [1] string String to unescape
+ *   - [1] userdata Socket object
+ *   - [2] string   String to unescape
  *
  * Output:
  *   - string
@@ -987,15 +1024,7 @@ static int unescape(lua_State *L)
 	struct curl_data *cdata = check_curl_data_param(L, 1);
 	const char *str = luaL_checkstring(L, 2);
 
-	int res_len;
-	char *res_str = curl_easy_unescape(cdata->handle, str, 0, &res_len);
-	if (res_str == NULL) {
-		lua_pushliteral(L, "curl_easy_unescape failed");
-		lua_error(L);
-	}
-	lua_pushlstring(L, res_str, res_len);
-	curl_free(res_str);
-	return 1;
+	return libcurl_unescape(L, str, luaL_len(L, 2), cdata->handle);
 }
 
 /**

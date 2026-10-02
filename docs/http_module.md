@@ -99,7 +99,7 @@ Results:
 
 ### fetch()
 
-Performs and HTTP request to the specified resource.
+Performs and HTTP request to the specified resource. Returns a response object or nil if a response could not be obtained from the server.
 
 Arguments:
 
@@ -117,7 +117,8 @@ The third argument may have the following optional keys:
 
 Results:
 
-- HTTP response object [userdata]
+- HTTP response object [userdata|nil]
+- Error message [string|nil]
 
 Example:
 

@@ -13,6 +13,8 @@ void libcurl_enable_cookies(lua_State *L, bool enable, CURL *handle);
 void libcurl_clear_cookies(lua_State *L, CURL *handle);
 void libcurl_load_cookies(lua_State *L, int cookiejar_pos, CURL *handle);
 void libcurl_save_cookies(lua_State *L, int cookiejar_pos, CURL *handle);
+int libcurl_escape(lua_State *L, const char *str, size_t str_len, CURL *handle);
+int libcurl_unescape(lua_State *L, const char *str, size_t str_len, CURL *handle);
 
 #ifdef __cplusplus
 }
