@@ -105,7 +105,7 @@ Arguments:
 
 - HTTP socket object [userdata]
 - URL of the resource [string]
-- Request parameters [table]. Optional
+- Request options [table]. Optional
 
 The third argument may have the following optional keys:
 
@@ -243,7 +243,7 @@ Methods:
 
 ### cookies()
 
-Returns a table with server cookies. Note that you need activate the cookie engine and set the cookies field to true for the response table in the request parameters. See the example bellow.
+Returns a table with server cookies. Note that you need activate the cookie engine and set the cookies field to true for the response table in the request options. See the example bellow.
 
 Arguments:
 
@@ -274,7 +274,7 @@ table
 
 ### headers()
 
-Returns HTTP headers from the server response. If the name argument is specified, the method returns the header value with the specified name. Note that you need set the headers field to true for the response table in the request parameters. See the example bellow.
+Returns HTTP headers from the server response. If the name argument is specified, the method returns the header value with the specified name. Note that you need set the headers field to true for the response table in the request options. See the example bellow.
 
 Arguments:
 
