@@ -219,6 +219,13 @@ static void ensure_structures(lua_State *L)
 /**
  * Loads HTML document from a char buffer
  *
+ * @param lua_State  *L        Lua stack
+ * @param const char *str      HTML string
+ * @param size_t     len       HTML string length
+ * @param const char *encoding Character encoding or NULL
+ *
+ * @return void
+ *
  * === Lua stack ===
  *
  * Input:
@@ -227,7 +234,7 @@ static void ensure_structures(lua_State *L)
  * Output:
  *   - HTML document
  */
-static void get_document(lua_State *L, const char *str, size_t len)
+static void get_document(lua_State *L, const char *str, size_t len, const char *encoding)
 {
 	ensure_structures(L);
 
@@ -251,7 +258,7 @@ static void get_document(lua_State *L, const char *str, size_t len)
 
 	lua_setuservalue(L, -2);
 
-	hdoc->doc = htmlReadMemory(str, len, NULL, NULL, HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING);
+	hdoc->doc = htmlReadMemory(str, len, NULL, encoding, HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING);
 	if (hdoc->doc == NULL) {
 		throw_parser_error(L, "Failed to load html document");
 	}
@@ -259,6 +266,13 @@ static void get_document(lua_State *L, const char *str, size_t len)
 
 /**
  * Creates a new HTML module and loads HTML document from a char buffer
+ *
+ * @param lua_State  *L        Lua stack
+ * @param const char *str      HTML string
+ * @param size_t     len       HTML string length
+ * @param const char *encoding Character encoding or NULL
+ *
+ * @return void
  *
  * === Lua stack ===
  *
@@ -268,11 +282,11 @@ static void get_document(lua_State *L, const char *str, size_t len)
  * Output:
  *   - HTML document
  */
-void html_get_document(lua_State *L, const char *str, size_t len)
+void html_get_document(lua_State *L, const char *str, size_t len, const char *encoding)
 {
 	html_init(L);
 
-	get_document(L, str, len);
+	get_document(L, str, len, encoding);
 	lua_replace(L, -2);
 }
 
@@ -307,20 +321,25 @@ htmlDocPtr html_get_document_ptr(lua_State *L)
  * === Lua stack ===
  *
  * Input:
- *   - [1] userdata HTML module object
- *   - [2] string   HTML document presented as a string
+ *   - [1] userdata   HTML module object
+ *   - [2] string     HTML document presented as a string
+ *   - [3] string|nil HTML document encoding
  *
  * Output:
  *   - userdata with HTML document
  */
 static int load_from_string(lua_State *L)
 {
+	lua_settop(L, 3);
 	luaL_checkudata(L, 1, HTML_MODULE_META_NAME);
-	const char *str = luaL_checkstring(L, 2);
+	int arg3type = lua_type(L, 3);
+	luaL_argcheck(L, (arg3type == LUA_TSTRING || arg3type == LUA_TNIL), 3, "string or nil expected");
 
-	lua_settop(L, 2);
-	lua_insert(L, 1);
-	get_document(L, str, luaL_len(L, 1));
+	const char *str = luaL_checkstring(L, 2);
+	const char *enc = arg3type == LUA_TSTRING ? lua_tostring(L, 3) : NULL;
+
+	lua_rotate(L, 1, -1);
+	get_document(L, str, luaL_len(L, 1), enc);
 
 	return 1;
 }

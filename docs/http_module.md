@@ -309,6 +309,7 @@ Returns the HTML body of the server response as an HTML document object. Note th
 Arguments:
 
 - HTTP response object [userdata]
+- Character encoding [string|nil]
 
 Results:
 

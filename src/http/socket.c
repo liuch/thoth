@@ -350,9 +350,11 @@ static void set_user_headers(lua_State *L, int t_index, struct curl_data *cdata)
 					// cppcheck-suppress nullPointerOutOfMemory
 					strcpy(tmp, key);
 					if (vlen) {
+						// cppcheck-suppress nullPointerArithmeticOutOfMemory
 						strcpy(tmp + klen, ": ");
 						strcpy(tmp + klen + 2, val);
 					} else {
+						// cppcheck-suppress nullPointerArithmeticOutOfMemory
 						strcpy(tmp + klen, ":");
 					}
 					h = curl_slist_append(h, tmp);

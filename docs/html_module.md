@@ -18,6 +18,7 @@ Arguments:
 
 - HTML module object [userdata]
 - HTML string to make the document from [string]
+- Character encoding [string|nil]
 
 Results:
 

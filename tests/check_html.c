@@ -9,13 +9,18 @@ static void get_module(void)
 	html_init(L);
 }
 
-static void get_document(const char *str)
+static void get_document(const char *str, const char *encoding)
 {
 	get_module();
 	ck_assert_int_eq(LUA_TFUNCTION, lua_getfield(L, -1, "fromString"));
 	lua_rotate(L, -2, 1);
 	lua_pushstring(L, str ? str : html_str);
-	lua_call(L, 2, 1);
+	int acnt = 2;
+	if (encoding != NULL) {
+		++acnt;
+		lua_pushstring(L, encoding);
+	}
+	lua_call(L, acnt, 1);
 }
 
 static void eval_xpath(const char *xpath_str)
@@ -123,14 +128,14 @@ END_TEST
 
 START_TEST(test_http_document)
 {
-	get_document(NULL);
+	get_document(NULL, NULL);
 	check_userdata_meta_name("thoth.html.doc");
 }
 END_TEST
 
 START_TEST(test_html_document_element)
 {
-	get_document(NULL);
+	get_document(NULL, NULL);
 	lua_getfield(L, -1, "documentElement");
 	ck_assert_int_eq(LUA_TFUNCTION, lua_type(L, -1));
 	lua_pushvalue(L, -2);
@@ -138,10 +143,20 @@ START_TEST(test_html_document_element)
 	check_userdata_meta_name("thoth.html.node");
 }
 END_TEST
+START_TEST(test_html_document_with_encoding)
+{
+	const char w1251[] = "<span>\xE0\xE1\xE2\xE3\xE4</span>"; // абвгд in windows-1251
+	get_document(w1251, "windows-1251");
+	lua_getfield(L, -1, "documentElement");
+	lua_pushvalue(L, -2);
+	lua_call(L, 1, 1);
+	ck_assert_str_eq("абвгд", node_content());
+}
+END_TEST
 
 START_TEST(test_html_xpath_get_node_list)
 {
-	get_document(NULL);
+	get_document(NULL, NULL);
 	eval_xpath("/html/body/span");
 	ck_assert_int_eq(3, xres_size());
 }
@@ -149,7 +164,7 @@ END_TEST
 
 START_TEST(test_html_xpath_get_one_node)
 {
-	get_document(NULL);
+	get_document(NULL, NULL);
 	eval_xpath("/html/body/span[1]");
 	ck_assert_int_eq(1, xres_size());
 }
@@ -157,7 +172,7 @@ END_TEST
 
 START_TEST(test_html_xpath_nested_query)
 {
-	get_document("<html><body><div><b></b></div><b></b><b></b></body></html>");
+	get_document("<html><body><div><b></b></div><b></b><b></b></body></html>", NULL);
 	eval_xpath("/html/body/div");
 	xres_result(1);
 	check_userdata_meta_name("thoth.html.node");
@@ -168,7 +183,7 @@ END_TEST
 
 START_TEST(test_html_xpath_get_element_by_attr)
 {
-	get_document("<a t=\"tv\"><b><c q=\"qv\"><d r=\"rv\"></d></c></b></a>");
+	get_document("<a t=\"tv\"><b><c q=\"qv\"><d r=\"rv\"></d></c></b></a>", NULL);
 	eval_xpath("//a[@t]//c[@q='qv']//d[contains(@r,'rv')]");
 	ck_assert_int_eq(1, xres_size());
 }
@@ -183,7 +198,7 @@ START_TEST(test_html_xpath_result_type)
 		"true()",         "boolean",
 		NULL
 	};
-	get_document(NULL);
+	get_document(NULL, NULL);
 	int top = lua_gettop(L);
 	for (int i = 0; list[i]; i = i + 2) {
 		eval_xpath(list[i]);
@@ -198,7 +213,7 @@ START_TEST(test_html_xpath_result_size)
 	const char *query[] = { "//span", "//h1", "true()", NULL };
 	const int  size[]   = { 3, 0, 0 };
 
-	get_document(NULL);
+	get_document(NULL, NULL);
 	int top = lua_gettop(L);
 	for (int i = 0; query[i]; ++i) {
 		eval_xpath(query[i]);
@@ -211,7 +226,7 @@ END_TEST
 START_TEST(test_html_xpath_result_list)
 {
 	const int item_count = 3;
-	get_document(NULL);
+	get_document(NULL, NULL);
 	eval_xpath("//span");
 	xres_result(0);
 	ck_assert_int_eq(LUA_TTABLE, lua_type(L, -1));
@@ -226,7 +241,7 @@ END_TEST
 
 START_TEST(test_html_xpath_result_string)
 {
-	get_document(NULL);
+	get_document(NULL, NULL);
 	eval_xpath("string(//span[3])");
 	xres_result(0);
 	ck_assert_int_eq(LUA_TSTRING, lua_type(L, -1));
@@ -236,7 +251,7 @@ END_TEST
 
 START_TEST(test_html_xpath_result_number)
 {
-	get_document(NULL);
+	get_document(NULL, NULL);
 	eval_xpath("count(//span)");
 	xres_result(0);
 	ck_assert_int_eq(LUA_TNUMBER, lua_type(L, -1));
@@ -246,7 +261,7 @@ END_TEST
 
 START_TEST(test_html_xpath_result_boolean)
 {
-	get_document(NULL);
+	get_document(NULL, NULL);
 	eval_xpath("true()");
 	xres_result(0);
 	ck_assert_int_eq(LUA_TBOOLEAN, lua_type(L, -1));
@@ -256,7 +271,7 @@ END_TEST
 
 START_TEST(test_html_xpath_text_node_content)
 {
-	get_document(NULL);
+	get_document(NULL, NULL);
 	eval_xpath("//span[2]/text()");
 	xres_result(1);
 	check_userdata_meta_name("thoth.html.node");
@@ -266,7 +281,7 @@ END_TEST
 
 START_TEST(test_html_xpath_attribute_content)
 {
-	get_document(NULL);
+	get_document(NULL, NULL);
 	eval_xpath("//span[2]/@c");
 	xres_result(1);
 	check_userdata_meta_name("thoth.html.node");
@@ -276,7 +291,7 @@ END_TEST
 
 START_TEST(test_html_attr_get_from_real_node)
 {
-	get_document(NULL);
+	get_document(NULL, NULL);
 	eval_xpath("//span[1]");
 	xres_result(1);
 	ck_assert_str_eq("bv", node_attribute("b"));
@@ -285,7 +300,7 @@ END_TEST
 
 START_TEST(test_html_attr_get_from_nonexistent_node)
 {
-	get_document(NULL);
+	get_document(NULL, NULL);
 	eval_xpath("//body");
 	xres_result(1);
 	ck_assert(node_attribute("a") == NULL);
@@ -294,7 +309,7 @@ END_TEST
 
 START_TEST(test_html_attr_get_from_nonnode)
 {
-	get_document(NULL);
+	get_document(NULL, NULL);
 	eval_xpath("//span[@a]/@a");
 	xres_result(1);
 	ck_assert(node_attribute("a") == NULL);
@@ -309,7 +324,7 @@ START_TEST(test_html_node_get_type)
 		"//span[1]/@a",     "attribute",
 		NULL
 	};
-	get_document(NULL);
+	get_document(NULL, NULL);
 	int top = lua_gettop(L);
 	for (int i = 0; list[i]; i = i + 2) {
 		eval_xpath(list[i]);
@@ -323,7 +338,7 @@ END_TEST
 
 START_TEST(test_html_node_get_name)
 {
-	get_document(NULL);
+	get_document(NULL, NULL);
 	eval_xpath("//span[2]");
 	xres_result(1);
 	ck_assert_str_eq("span", node_name());
@@ -332,7 +347,7 @@ END_TEST
 
 START_TEST(test_html_node_get_attribute_list)
 {
-	get_document(NULL);
+	get_document(NULL, NULL);
 	eval_xpath("//span[1]");
 	xres_result(1);
 	lua_getfield(L, -1, "attributes");
@@ -359,7 +374,7 @@ END_TEST
 
 START_TEST(test_html_node_get_text_content)
 {
-	get_document(NULL);
+	get_document(NULL, NULL);
 	eval_xpath("/html/body");
 	xres_result(1);
 	ck_assert_str_eq("content1content2content3", node_content());
@@ -368,7 +383,7 @@ END_TEST
 
 START_TEST(test_html_node_get_html_content)
 {
-	get_document(NULL);
+	get_document(NULL, NULL);
 	eval_xpath("/html/body/span[1]");
 	xres_result(1);
 	ck_assert_str_eq("<span a=\"av\" b=\"bv\">content1</span>", node_html());
@@ -379,7 +394,7 @@ START_TEST(test_html_nodecmp_same_query)
 {
 	const char *query_str = "/html/body/span[1]";
 
-	get_document(NULL);
+	get_document(NULL, NULL);
 	eval_xpath(query_str);
 	xres_result(1);
 	int node1 = lua_gettop(L);
@@ -395,7 +410,7 @@ END_TEST
 
 START_TEST(test_html_nodecmp_different_queries)
 {
-	get_document(NULL);
+	get_document(NULL, NULL);
 	eval_xpath("/html/body/span[2]/@c");
 	xres_result(1);
 	int node1 = lua_gettop(L);
@@ -411,8 +426,20 @@ END_TEST
 
 START_TEST(test_html_external_calls)
 {
-	html_get_document(L, html_str, strlen(html_str));
+	html_get_document(L, html_str, strlen(html_str), NULL);
 	check_userdata_meta_name("thoth.html.doc");
+}
+END_TEST
+
+START_TEST(test_html_external_calls_with_encoding)
+{
+	const char w1251[] = "<span>\xE0\xE1\xE2\xE3\xE4</span>"; // абвгд in windows-1251
+	html_get_document(L, w1251, strlen(w1251), "windows-1251");
+	check_userdata_meta_name("thoth.html.doc");
+	lua_getfield(L, -1, "documentElement");
+	lua_pushvalue(L, -2);
+	lua_call(L, 1, 1);
+	ck_assert_str_eq("абвгд", node_content());
 }
 END_TEST
 
@@ -429,6 +456,7 @@ Suite *html_suite(void)
 	tcase_add_checked_fixture(tc_doc, setup, teardown);
 	tcase_add_test(tc_doc, test_http_document);
 	tcase_add_test(tc_doc, test_html_document_element);
+	tcase_add_test(tc_doc, test_html_document_with_encoding);
 	suite_add_tcase(s, tc_doc);
 
 	TCase *tc_xpath = tcase_create("Xpath");
@@ -472,6 +500,7 @@ Suite *html_suite(void)
 	TCase *tc_extern = tcase_create("External");
 	tcase_add_checked_fixture(tc_extern, setup, teardown);
 	tcase_add_test(tc_extern, test_html_external_calls);
+	tcase_add_test(tc_extern, test_html_external_calls_with_encoding);
 	suite_add_tcase(s, tc_extern);
 
 	return s;

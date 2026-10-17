@@ -9,7 +9,7 @@ extern "C"
 #include "../lua.h"
 
 void html_init(lua_State *L);
-void html_get_document(lua_State *L, const char *str, size_t len);
+void html_get_document(lua_State *L, const char *str, size_t len, const char *encoding);
 void html_get_node_by_ptr(lua_State *L, int document_pos, xmlNodePtr node);
 htmlDocPtr html_get_document_ptr(lua_State *L);
 

@@ -145,6 +145,19 @@ static const char *resp_text(void)
 	return text;
 }
 
+static void resp_html(int args_num)
+{
+	int first_arg_pos = lua_gettop(L) - args_num + 1;
+	lua_getfield(L, first_arg_pos, "html");
+	ck_assert_int_eq(LUA_TFUNCTION, lua_type(L, -1));
+
+	for (int n = 0; n < args_num; ++n) {
+		lua_pushvalue(L, first_arg_pos + n);
+	}
+	lua_call(L, args_num, 1);
+	ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -1));
+}
+
 static int resp_status(void)
 {
 	lua_getfield(L, -1, "status");
@@ -421,12 +434,9 @@ START_TEST(test_http_query_get_content_twice)
 }
 END_TEST
 
-START_TEST(test_http_query_get_html_content)
+START_TEST(test_http_response_html)
 {
-	tcpserver_start(
-		"HTTP/1.1 200 OK\n\n<!DOCTYPE html><html lang=\"en\"><body><div>Hello!</div></body></html>",
-		0
-	);
+	tcpserver_start("HTTP/1.1 200 OK\n\n<span>Hello!</span>", 0);
 
 	get_socket();
 	push_url();
@@ -434,17 +444,47 @@ START_TEST(test_http_query_get_html_content)
 
 	tcpserver_destroy();
 
-	ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -2));
-	ck_assert_int_eq(LUA_TNIL, lua_type(L, -1));
 	lua_pop(L, 1);
+	check_userdata_meta_name("thoth.http.response");
+	resp_html(1);
+	check_userdata_meta_name("thoth.html.doc");
 
-	lua_getfield(L, -1, "html");
-	ck_assert_int_eq(LUA_TFUNCTION, lua_type(L, -1));
+	lua_getfield(L, -1, "documentElement");
 	lua_pushvalue(L, -2);
 	lua_call(L, 1, 1);
-	ck_assert_int_eq(LUA_TUSERDATA, lua_type(L, -1));
+	lua_getfield(L, -1, "textContent");
+	lua_pushvalue(L, -2);
+	lua_call(L, 1, 1);
+	ck_assert_str_eq("Hello!", lua_tostring(L, -1));
 }
 END_TEST
+
+START_TEST(test_http_response_html_with_encoding)
+{
+	tcpserver_start("HTTP/1.1 200 OK\n\n<span>\xCF\xF0\xE8\xE2\xE5\xF2!</span>", 0);
+
+	get_socket();
+	push_url();
+	socket_fetch(1);
+
+	tcpserver_destroy();
+
+	lua_pop(L, 1);
+	check_userdata_meta_name("thoth.http.response");
+	lua_pushliteral(L, "windows-1251");
+	resp_html(2);
+	check_userdata_meta_name("thoth.html.doc");
+
+	lua_getfield(L, -1, "documentElement");
+	lua_pushvalue(L, -2);
+	lua_call(L, 1, 1);
+	lua_getfield(L, -1, "textContent");
+	lua_pushvalue(L, -2);
+	lua_call(L, 1, 1);
+	ck_assert_str_eq("Привет!", lua_tostring(L, -1));
+}
+END_TEST
+
 
 START_TEST(test_http_get_header_list)
 {
@@ -989,8 +1029,12 @@ Suite *http_suite(void)
 	tcase_add_test(tc_getq, test_http_query_error);
 	tcase_add_test(tc_getq, test_http_query_counter_increment);
 	tcase_add_test(tc_getq, test_http_query_get_content_twice);
-	tcase_add_test(tc_getq, test_http_query_get_html_content);
 	suite_add_tcase(s, tc_getq);
+
+	TCase *tc_geth = tcase_create("Get HTML document");
+	tcase_add_checked_fixture(tc_geth, setup, teardown);
+	tcase_add_test(tc_geth, test_http_response_html);
+	tcase_add_test(tc_geth, test_http_response_html_with_encoding);
 
 	TCase *tc_headers = tcase_create("Headers");
 	tcase_add_checked_fixture(tc_headers, setup, teardown);

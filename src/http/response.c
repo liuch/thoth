@@ -103,16 +103,22 @@ static int get_response_json(lua_State *L)
  * @return int 0 or 1
  *
  * Input:
- *   - [1] userdata HTTP response object
+ *   - [1] userdata   HTTP response object
+ *   - [2] string|nil HTML document encoding
  *
  * Output:
  *   - userdata|nothing HTML document object
  */
 static int get_response_html(lua_State *L)
 {
+	lua_settop(L, 2);
 	struct http_resp *resp = luaL_checkudata(L, 1, HTTP_RESP_META_NAME);
+	int arg2type = lua_type(L, 2);
+	luaL_argcheck(L, (arg2type == LUA_TSTRING || arg2type == LUA_TNIL), 2, "string or nil expected");
+
 	if (resp->buffer.pointer != NULL && resp->buffer.size != 0) {
-		html_get_document(L, (const char *)resp->buffer.pointer, resp->buffer.size);
+		const char *enc = arg2type == LUA_TSTRING ? lua_tostring(L, 2) : NULL;
+		html_get_document(L, (const char *)resp->buffer.pointer, resp->buffer.size, enc);
 		free_buffer(&resp->buffer);
 		return 1;
 	}
