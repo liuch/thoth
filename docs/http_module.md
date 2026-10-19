@@ -241,6 +241,13 @@ Methods:
 | json    | Returns the JSON body of the HTTP response as a Lua value        |
 | text    | Returns the response body in plain text                          |
 
+Properties:
+
+| Name    | Description                                                      |
+| ------- | ---------------------------------------------------------------- |
+| ok      | A boolean indicating whether the response was successful         |
+| status  | The status code of the response                                  |
+
 ### cookies()
 
 Returns a table with server cookies. Note that you need activate the cookie engine and set the cookies field to true for the response table in the request options. See the example bellow.
@@ -405,3 +412,19 @@ end
 $ !./thoth script.lua
 <!doctype html><html itemscope="" itemtype="http:/…
 ```
+
+### ok
+
+A boolean indicating whether the response was successful (status in the range 200 – 299) or not.
+
+Type: boolean
+
+Access mode: read only
+
+### status
+
+The HTTP status code of the response. Will be 200 for a success.
+
+Type: number
+
+Access mode: read only
