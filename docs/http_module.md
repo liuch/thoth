@@ -37,7 +37,7 @@ print(type(socket), getmetatable(socket).__name)
 
 ```sh
 $ ./thoth script.lua
-userdata	thoth.socket
+userdata	thoth.http.socket
 ```
 
 ## HTTP Socket Object

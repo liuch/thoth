@@ -273,7 +273,7 @@ END_TEST
 START_TEST(test_http_open_close_socket)
 {
 	get_socket();
-	check_userdata_meta_name("thoth.socket");
+	check_userdata_meta_name("thoth.http.socket");
 	socket_close();
 }
 END_TEST

@@ -10,7 +10,7 @@
 #include "../common.h"
 #include "../version.h"
 
-#define HTTP_SOCKET_META_NAME  "thoth.socket"
+#define HTTP_SOCKET_META_NAME  "thoth.http.socket"
 
 struct curl_data {
 	CURL   *handle;
