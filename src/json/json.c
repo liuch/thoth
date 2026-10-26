@@ -531,8 +531,8 @@ static int decode(lua_State *L)
  */
 static int json_unload(lua_State *L)
 {
-	const struct json_data *jdata = lua_touserdata(L, 1);
-	if (jdata->active) {
+	const struct json_data *jdata = luaL_testudata(L, 1, JSON_MODULE_META_NAME);
+	if (jdata && jdata->active) {
 		if (!--module_started) {
 			lua_pushliteral(L, JSON_MODULE_META_NAME);
 			lua_pushnil(L);

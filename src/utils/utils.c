@@ -162,8 +162,8 @@ static int base64enc(lua_State *L)
  */
 static int utils_unload(lua_State *L)
 {
-	const struct utils_data *udata = lua_touserdata(L, 1);
-	if (udata->active) {
+	const struct utils_data *udata = luaL_testudata(L, 1, UTILS_MODULE_META_NAME);
+	if (udata && udata->active) {
 		if (!--module_started) {
 			lua_pushliteral(L, UTILS_MODULE_META_NAME);
 			lua_pushnil(L);

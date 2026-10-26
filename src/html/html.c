@@ -143,9 +143,11 @@ static int eval_doc_xpath(lua_State *L)
  */
 static int document_cleanup(lua_State *L)
 {
-	struct html_doc *hdoc = luaL_checkudata(L, 1, HTML_DOC_META_NAME);
-	xmlFreeDoc(hdoc->doc);
-	hdoc->doc = NULL;
+	struct html_doc *hdoc = luaL_testudata(L, 1, HTML_DOC_META_NAME);
+	if (hdoc) {
+		xmlFreeDoc(hdoc->doc);
+		hdoc->doc = NULL;
+	}
 	return 0;
 }
 
@@ -387,8 +389,8 @@ static int get_module_property(lua_State *L)
  */
 static int html_unload(lua_State *L)
 {
-	const struct html_data *hdata = lua_touserdata(L, 1);
-	if (hdata->active) {
+	const struct html_data *hdata = luaL_testudata(L, 1, HTML_MODULE_META_NAME);
+	if (hdata && hdata->active) {
 		if (!--module_started) {
 			xmlCleanupParser();
 		}

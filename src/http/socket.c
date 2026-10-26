@@ -1049,8 +1049,8 @@ static int unescape(lua_State *L)
  */
 static int cleanup(lua_State *L)
 {
-	struct curl_data *cdata = luaL_checkudata(L, 1, HTTP_SOCKET_META_NAME);
-	if (cdata->handle == NULL) return 0;
+	struct curl_data *cdata = luaL_testudata(L, 1, HTTP_SOCKET_META_NAME);
+	if (!cdata || cdata->handle == NULL) return 0;
 
 	lua_getuservalue(L, 1); // [2] Socket data set
 	if (dataset_is_cookiejar_global(L)) {

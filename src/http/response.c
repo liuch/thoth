@@ -28,12 +28,14 @@
  */
 static int cleanup_response(lua_State *L)
 {
-	struct http_resp *resp = luaL_checkudata(L, 1, HTTP_RESP_META_NAME);
-	free_buffer(&resp->buffer);
-	luaL_unref(L, LUA_REGISTRYINDEX, resp->headers_ref);
-	luaL_unref(L, LUA_REGISTRYINDEX, resp->cookies_ref);
-	resp->headers_ref = LUA_REFNIL;
-	resp->cookies_ref = LUA_REFNIL;
+	struct http_resp *resp = luaL_testudata(L, 1, HTTP_RESP_META_NAME);
+	if (resp) {
+		free_buffer(&resp->buffer);
+		luaL_unref(L, LUA_REGISTRYINDEX, resp->headers_ref);
+		luaL_unref(L, LUA_REGISTRYINDEX, resp->cookies_ref);
+		resp->headers_ref = LUA_REFNIL;
+		resp->cookies_ref = LUA_REFNIL;
+	}
 	return 0;
 }
 

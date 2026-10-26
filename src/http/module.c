@@ -30,8 +30,8 @@ struct http_data {
  */
 static int module_cleanup(lua_State *L)
 {
-	const struct http_data *hdata = lua_touserdata(L, 1);
-	if (hdata->curl_started) {
+	const struct http_data *hdata = luaL_testudata(L, 1, HTTP_MODULE_META_NAME);
+	if (hdata && hdata->curl_started) {
 		curl_global_cleanup();
 	}
 	socket_cleanup_structures(L);

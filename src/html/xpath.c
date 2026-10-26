@@ -77,9 +77,11 @@ void xpath_set_result(lua_State *L, int xpath_pos, xmlXPathObjectPtr result)
  */
 static int cleanup(lua_State *L)
 {
-	struct xpath_data *xdata = luaL_checkudata(L, 1, HTML_XPATH_META_NAME);
-	xmlXPathFreeObject(xdata->obj);
-	xdata->obj = NULL;
+	struct xpath_data *xdata = luaL_testudata(L, 1, HTML_XPATH_META_NAME);
+	if (xdata) {
+		xmlXPathFreeObject(xdata->obj);
+		xdata->obj = NULL;
+	}
 	return 0;
 }
 
