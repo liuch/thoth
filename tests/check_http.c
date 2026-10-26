@@ -1000,6 +1000,34 @@ START_TEST(test_http_unescape_when_closed)
 }
 END_TEST
 
+START_TEST(test_http_state_active)
+{
+	luaL_openlibs(L);
+	lua_getglobal(L, "tostring");
+	get_socket();
+	lua_call(L, 1, 1);
+	ck_assert_str_eq("thoth.http.socket (active; id=1)", lua_tostring(L, -1));
+	lua_getglobal(L, "tostring");
+	get_socket();
+	lua_call(L, 1, 1);
+	ck_assert_str_eq("thoth.http.socket (active; id=2)", lua_tostring(L, -1));
+}
+END_TEST
+
+
+START_TEST(test_http_state_closed)
+{
+	luaL_openlibs(L);
+	lua_getglobal(L, "tostring");
+	get_socket(); socket_close();
+	lua_call(L, 1, 1);
+	ck_assert_str_eq("thoth.http.socket (closed; id=1)", lua_tostring(L, -1));
+	lua_getglobal(L, "tostring");
+	get_socket(); socket_close();
+	lua_call(L, 1, 1);
+	ck_assert_str_eq("thoth.http.socket (closed; id=2)", lua_tostring(L, -1));
+}
+END_TEST
 
 Suite *http_suite(void)
 {
@@ -1073,6 +1101,12 @@ Suite *http_suite(void)
 	tcase_add_test(tc_closed, test_http_escape_when_closed);
 	tcase_add_test(tc_closed, test_http_unescape_when_closed);
 	suite_add_tcase(s, tc_closed);
+
+	TCase *tc_state = tcase_create("State");
+	tcase_add_checked_fixture(tc_state, setup, teardown);
+	tcase_add_test(tc_state, test_http_state_active);
+	tcase_add_test(tc_state, test_http_state_closed);
+	suite_add_tcase(s, tc_state);
 
 	return s;
 }

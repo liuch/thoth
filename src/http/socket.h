@@ -7,7 +7,7 @@ extern "C"
 
 #include "../lua.h"
 
-void socket_create(lua_State *L);
+void socket_create(lua_State *L, unsigned int id);
 void socket_get_dataset(lua_State *L);
 void socket_flush_cookies(lua_State *L, int socket_pos, int cookiejar_pos);
 void socket_update_cookies(lua_State *L, int socket_pos, int cookiejar_pos);

@@ -13,6 +13,7 @@
 #define HTTP_SOCKET_META_NAME  "thoth.http.socket"
 
 struct curl_data {
+	unsigned int id;
 	CURL   *handle;
 	char   error[CURL_ERROR_SIZE];
 	struct buffer writebuffer;
@@ -121,7 +122,8 @@ static size_t writefunction(const char *data, size_t size, size_t nmemb, void *u
 /**
  * Makes an empty userdata to control a curl easy socket
  *
- * @param lua_State* L Lua stack
+ * @param lua_State*   L  Lua stack
+ * @param unsigned int id Socket ID
  *
  * @return int 1
  *
@@ -133,9 +135,10 @@ static size_t writefunction(const char *data, size_t size, size_t nmemb, void *u
  * Output:
  *   - userdata Socket object
  */
-void socket_create(lua_State *L)
+void socket_create(lua_State *L, unsigned int id)
 {
 	struct curl_data *cdata = lua_newuserdata(L, sizeof(struct curl_data));
+	cdata->id = id;
 	cdata->handle = NULL;
 	cdata->error[0] = '\0';
 	cdata->writebuffer.pointer = NULL;
@@ -1135,6 +1138,31 @@ static int set_property(lua_State *L)
 }
 
 /**
+ * Implementation of the __tostring method for the socket userdata
+ *
+ * @param lua_State* L Lua stack
+ *
+ * @return int 1
+ *
+ * === Lua stack ===
+ *
+ * Input:
+ *   - [1] userdata Socket object
+ *
+ * Output:
+ *   - string
+ */
+static int to_string(lua_State *L)
+{
+	const struct curl_data *cdata = lua_touserdata(L, 1);
+	const char *state = cdata->handle != NULL ? "active" : "closed";
+	char buffer[64];
+	snprintf(buffer, sizeof(buffer), "%s (%s; id=%u)", HTTP_SOCKET_META_NAME, state, cdata->id);
+	lua_pushstring(L, buffer);
+	return 1;
+}
+
+/**
  * Creates and initiates required structures
  *
  * @param lua_State *L Lua stack
@@ -1158,6 +1186,8 @@ void socket_init_structures(lua_State *L)
 		lua_setfield(L, -2, "__index");
 		lua_pushcfunction(L, set_property);
 		lua_setfield(L, -2, "__newindex");
+		lua_pushcfunction(L, to_string);
+		lua_setfield(L, -2, "__tostring");
 	}
 	lua_pop(L, 1);
 

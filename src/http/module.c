@@ -12,6 +12,7 @@
 
 struct http_data {
 	bool curl_started;
+	unsigned int socket_last_id;
 };
 
 /**
@@ -158,7 +159,8 @@ static int new_socket(lua_State *L)
 		hdata->curl_started = true;
 	}
 
-	socket_create(L);
+	if (!++hdata->socket_last_id) ++hdata->socket_last_id;
+	socket_create(L, hdata->socket_last_id);
 
 	lua_getuservalue(L, -1);
 	// Link to module object
@@ -218,6 +220,7 @@ int http_init(lua_State *L)
 {
 	struct http_data *hdata = lua_newuserdata(L, sizeof(struct http_data));
 	hdata->curl_started = false;
+	hdata->socket_last_id = 0;
 
 	luaL_newmetatable(L, HTTP_MODULE_META_NAME);
 	lua_pushcfunction(L, module_cleanup);
