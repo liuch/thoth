@@ -27,7 +27,7 @@ CFLAGS ?= -Wall -Wextra -pedantic -O2
 CFLAGS += -std=c11
 PREFIX ?= /usr/local
 
-.PHONY: all release debug executable ccheck install uninstall test
+.PHONY: all release debug strict executable ccheck install uninstall test
 
 all: release
 
@@ -36,6 +36,9 @@ release: executable
 
 debug: CFLAGS += -gdwarf
 debug: executable
+
+strict: CFLAGS := $(filter-out -O2 -O3 -Os -Ofast -DNDEBUG, $(CFLAGS)) -Wconversion -Wsign-conversion -g -O0
+strict: executable
 
 executable: $(SRC_FILES)
 	$(CC) $(CFLAGS) $(SRC_FILES) -o $(TARGET_FILE) $(LIBRARY_FLAGS)
