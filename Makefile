@@ -23,7 +23,8 @@ TEST_SRC += src/json/json.c src/readline/readline.c src/utils/utils.c src/lua.c 
 TEST_BINARY = start_tests
 
 CC ?= gcc
-CFLAGS ?= -Wall -Wextra
+CFLAGS ?= -Wall -Wextra -pedantic -O2
+CFLAGS += -std=c11
 PREFIX ?= /usr/local
 
 .PHONY: all release debug executable ccheck install uninstall test
