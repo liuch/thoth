@@ -55,6 +55,7 @@ static int global_read_access(lua_State *L)
 	if (get_settings(L)->gprotect) {
 		return deny_access_undeclared_vars(L);
 	}
+
 	lua_pushnil(L);
 	return 1;
 }
@@ -81,6 +82,7 @@ static int global_write_access(lua_State *L)
 	if (get_settings(L)->gprotect) {
 		return deny_access_undeclared_vars(L);
 	}
+
 	lua_rawset(L, 1);
 	return 0;
 }

@@ -78,7 +78,8 @@ static void set_settings(lua_State *L, const char *name)
  */
 static char *completion_generator(const char *text, int state)
 {
-	static size_t index, len;
+	static int index;
+	static size_t len;
 	if (state == 0) {
 		index = 0;
 		len = strlen(text);
@@ -115,8 +116,11 @@ static char *completion_generator(const char *text, int state)
  *
  * @return char* NULL
  */
-static char *auto_completion_entry(const char *, int)
+static char *auto_completion_entry(const char *text, int state)
 {
+	(void)text;
+	(void)state;
+
 	return NULL;
 }
 

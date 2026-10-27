@@ -18,7 +18,7 @@ struct curl_data {
 	char   error[CURL_ERROR_SIZE];
 	struct buffer writebuffer;
 	struct curl_slist *user_headers;
-	int    queries;
+	lua_Integer queries;
 	bool   custom_useragent;
 	bool   new_cookiejar;
 	struct buffer    fields_data;
@@ -226,7 +226,7 @@ static int set_opt(lua_State *L)
 		custom_ua = true;
 	} else {
 		lua_pushfstring(L, "Unknown socket option: %s", opt);
-		lua_error(L);
+		return lua_error(L);
 	}
 
 	const char *val = lua_isnoneornil(L, 3) ? NULL : luaL_checkstring(L, 3);
@@ -344,6 +344,7 @@ static void set_user_headers(lua_State *L, int t_index, struct curl_data *cdata)
 								lua_typename(L, vtype)
 							);
 							lua_error(L);
+							__builtin_unreachable();
 					}
 					size_t vlen = strlen(val);
 					char *tmp = malloc(klen + vlen + 3);
@@ -382,7 +383,7 @@ static void set_user_headers(lua_State *L, int t_index, struct curl_data *cdata)
  * @param int               data_index Stack position the fields data is
  * @param struct curl_data* cdata      Socket data structure
  *
- * @return long Length of the query data string
+ * @return size_t Length of the query data string
  *
  * === Lua stack ===
  *
@@ -392,7 +393,7 @@ static void set_user_headers(lua_State *L, int t_index, struct curl_data *cdata)
  * Output:
  *   nothing
  */
-static long set_http_fields(lua_State *L, int data_index, struct curl_data *cdata)
+static size_t set_http_fields(lua_State *L, int data_index, struct curl_data *cdata)
 {
 	assert(cdata->fields_data.pointer == NULL);
 	size_t size = 0;
@@ -408,8 +409,7 @@ static long set_http_fields(lua_State *L, int data_index, struct curl_data *cdat
 		size_t v_size;
 		switch (v_type) {
 			case LUA_TSTRING:
-				v_str = lua_tostring(L, -1);
-				v_size = luaL_len(L, -1);
+				v_str = lua_tolstring(L, -1, &v_size);
 				break;
 			case LUA_TBOOLEAN:
 				if (lua_toboolean(L, -1)) {
@@ -435,10 +435,15 @@ static long set_http_fields(lua_State *L, int data_index, struct curl_data *cdat
 					k_str,
 					lua_typename(L, v_type)
 				);
-				lua_error(L);
+				return (size_t)lua_error(L);
 		}
 
-		char *v_estr = curl_easy_escape(cdata->handle, v_str, v_size);
+		if (v_size > INT_MAX) {
+			lua_pushliteral(L, "Body value is too long");
+			lua_error(L);
+		}
+
+		char *v_estr = curl_easy_escape(cdata->handle, v_str, (int)v_size);
 		if (v_estr == NULL) {
 			throw_out_of_memory(L, "HTTP escape");
 		}
@@ -499,8 +504,7 @@ static void set_http_mime(lua_State *L, int data_index, struct curl_data *cdata)
 		size_t v_size;
 		switch (v_type) {
 			case LUA_TSTRING:
-				v_str = lua_tostring(L, -1);
-				v_size = luaL_len(L, -1);
+				v_str = lua_tolstring(L, -1, &v_size);
 				break;
 			case LUA_TBOOLEAN:
 				if (lua_toboolean(L, -1)) {
@@ -528,6 +532,7 @@ static void set_http_mime(lua_State *L, int data_index, struct curl_data *cdata)
 					lua_typename(L, v_type)
 				);
 				lua_error(L);
+				__builtin_unreachable();
 		}
 		curl_mimepart *part = curl_mime_addpart(cdata->multipart_data);
 		if (part == NULL) {
@@ -563,7 +568,7 @@ static void set_http_method_params(lua_State *L, int params_index, struct curl_d
 	CURLcode res = CURLE_OK;
 	const char* method;
 	if (type != LUA_TSTRING || strcasecmp(method = lua_tostring(L, -1), "get") == 0) {
-		res = curl_easy_setopt(cdata->handle, CURLOPT_HTTPGET, 1);
+		res = curl_easy_setopt(cdata->handle, CURLOPT_HTTPGET, (long)1);
 	} else if (strcasecmp(method, "post") == 0) {
 		int bt_type = lua_getfield(L, params_index, "bodyType");
 		const char *bt_val;
@@ -579,16 +584,18 @@ static void set_http_method_params(lua_State *L, int params_index, struct curl_d
 				lua_typename(L, bt_type)
 			);
 			lua_error(L);
+			__builtin_unreachable();
 		}
 		int bv_type = lua_getfield(L, params_index, "body");
-		long size;
+		size_t size;
+		bool has_size = true;
 		if (bv_type == LUA_TNIL) {
 			// Empty POST query
 			size = 0;
 			res = curl_easy_setopt(cdata->handle, CURLOPT_POSTFIELDS, "");
 		} else if (bt_type == LUA_TNIL || strcasecmp(bt_val, "fields") == 0) {
 			if (bv_type == LUA_TSTRING) {
-				size = luaL_len(L, -1);
+				size = lua_rawlen(L, -1);
 				cdata->fields_data.pointer = malloc(size);
 				if (cdata->fields_data.pointer == NULL) {
 					throw_out_of_memory(L, "HTTP");
@@ -611,10 +618,12 @@ static void set_http_method_params(lua_State *L, int params_index, struct curl_d
 					lua_typename(L, bv_type)
 				);
 				lua_error(L);
+				__builtin_unreachable();
 			}
 		} else if (strcasecmp(bt_val, "mime") == 0) {
 			if (bv_type == LUA_TTABLE) {
-				size = -1;
+				size = 0;
+				has_size = false;
 				set_http_mime(L, lua_gettop(L), cdata);
 				res = curl_easy_setopt(cdata->handle, CURLOPT_MIMEPOST, cdata->multipart_data);
 			} else {
@@ -625,6 +634,7 @@ static void set_http_method_params(lua_State *L, int params_index, struct curl_d
 					lua_typename(L, bv_type)
 				);
 				lua_error(L);
+				__builtin_unreachable();
 			}
 		} else {
 			lua_pushfstring(
@@ -634,10 +644,15 @@ static void set_http_method_params(lua_State *L, int params_index, struct curl_d
 				bt_val
 			);
 			lua_error(L);
+			__builtin_unreachable();
 		}
 
 		if (res == CURLE_OK) {
-			res = curl_easy_setopt(cdata->handle, CURLOPT_POSTFIELDSIZE, size);
+			res = curl_easy_setopt(
+				cdata->handle,
+				CURLOPT_POSTFIELDSIZE,
+				has_size ? (long)size : -1
+			);
 		}
 	} else {
 		lua_pushfstring(L, "Unknown HTTP method \"%s\"", method);
@@ -968,7 +983,7 @@ static int fetch(lua_State *L)
 
 	struct http_resp *resp = response_create(L);
 	if (http_code >= 200 && http_code <= 299) resp->ok = true;
-	resp->status = http_code;
+	resp->status = (int)http_code;
 	resp->buffer.pointer = cdata->writebuffer.pointer;
 	resp->buffer.size = cdata->writebuffer.size;
 	cdata->writebuffer.pointer = NULL;
@@ -1003,9 +1018,11 @@ static int fetch(lua_State *L)
 static int escape(lua_State *L)
 {
 	struct curl_data *cdata = check_curl_data_param(L, 1);
-	const char *str = luaL_checkstring(L, 2);
 
-	return libcurl_escape(L, str, luaL_len(L, 2), cdata->handle);
+	size_t str_len;
+	const char *str = luaL_checklstring(L, 2, &str_len);
+
+	return libcurl_escape(L, str, str_len, cdata->handle);
 }
 
 /**
@@ -1027,9 +1044,11 @@ static int escape(lua_State *L)
 static int unescape(lua_State *L)
 {
 	struct curl_data *cdata = check_curl_data_param(L, 1);
-	const char *str = luaL_checkstring(L, 2);
 
-	return libcurl_unescape(L, str, luaL_len(L, 2), cdata->handle);
+	size_t str_len;
+	const char *str = luaL_checklstring(L, 2, &str_len);
+
+	return libcurl_unescape(L, str, str_len, cdata->handle);
 }
 
 /**

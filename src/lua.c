@@ -47,5 +47,6 @@ int get_cfunction(lua_State *L, const char *name, const luaL_Reg *flist)
 			return 1;
 		}
 	}
+
 	return 0;
 }

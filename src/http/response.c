@@ -165,7 +165,7 @@ static int get_response_headers(lua_State *L)
 	if (name == NULL) {
 		throw_out_of_memory(L, "get_response_headers");
 	}
-	for (char *p = name; *p; ++p) *p = tolower(*p);
+	for (char *p = name; *p; ++p) *p = (char)tolower(*p);
 
 	lua_pushnil(L);
 	while (lua_next(L, -2) != 0) {
@@ -350,7 +350,7 @@ void response_saveheaders(lua_State *L, struct http_resp *resp, CURL *handle)
 		if (name == NULL) {
 			throw_out_of_memory(L, "response_saveheaders");
 		}
-		for (char *p = name; *p; ++p) *p = tolower(*p);
+		for (char *p = name; *p; ++p) *p = (char)tolower(*p);
 		lua_pushstring(L, name);
 		lua_pushstring(L, h->value);
 		lua_settable(L, -3);

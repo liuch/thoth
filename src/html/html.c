@@ -1,5 +1,4 @@
 #include <stdbool.h>
-#include <libxml2/libxml/xpath.h>
 #include "../lua.h"
 #include "html.h"
 #include "node.h"
@@ -246,6 +245,11 @@ static void ensure_structures(lua_State *L)
  */
 static void get_document(lua_State *L, const char *str, size_t len, const char *encoding)
 {
+	if (len > (size_t)INT_MAX) {
+		lua_pushliteral(L, "HTML document is too big");
+		lua_error(L);
+	}
+
 	ensure_structures(L);
 
 	struct html_doc *hdoc = lua_newuserdata(L, sizeof(struct html_doc));
@@ -268,7 +272,13 @@ static void get_document(lua_State *L, const char *str, size_t len, const char *
 
 	lua_setuservalue(L, -2);
 
-	hdoc->doc = htmlReadMemory(str, len, NULL, encoding, HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING);
+	hdoc->doc = htmlReadMemory(
+		str,
+		(int)len,
+		NULL,
+		encoding,
+		HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING
+	);
 	if (hdoc->doc == NULL) {
 		throw_parser_error(L, "Failed to load html document");
 	}
@@ -345,11 +355,12 @@ static int load_from_string(lua_State *L)
 	int arg3type = lua_type(L, 3);
 	luaL_argcheck(L, (arg3type == LUA_TSTRING || arg3type == LUA_TNIL), 3, "string or nil expected");
 
-	const char *str = luaL_checkstring(L, 2);
+	size_t str_len;
+	const char *str = luaL_checklstring(L, 2, &str_len);
 	const char *enc = arg3type == LUA_TSTRING ? lua_tostring(L, 3) : NULL;
 
 	lua_rotate(L, 1, -1);
-	get_document(L, str, luaL_len(L, 1), enc);
+	get_document(L, str, str_len, enc);
 
 	return 1;
 }

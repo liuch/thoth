@@ -193,7 +193,12 @@ void libcurl_save_cookies(lua_State *L, int cookiejar_pos, CURL *handle)
  */
 int libcurl_escape(lua_State *L, const char *str, size_t str_len, CURL *handle)
 {
-	char *res_str = curl_easy_escape(handle, str, str_len);
+	if (str_len > (size_t)INT_MAX) {
+		lua_pushliteral(L, "Libcurl: the string is too long to escape");
+		lua_error(L);
+	}
+
+	char *res_str = curl_easy_escape(handle, str, (int)str_len);
 	if (res_str == NULL) {
 		lua_pushliteral(L, "Libcurl: curl_easy_escape failed");
 		lua_error(L);
@@ -225,14 +230,19 @@ int libcurl_escape(lua_State *L, const char *str, size_t str_len, CURL *handle)
  */
 int libcurl_unescape(lua_State *L, const char *str, size_t str_len, CURL *handle)
 {
+	if (str_len > (size_t)INT_MAX) {
+		lua_pushliteral(L, "Libcurl: the string is too long to unescape");
+		lua_error(L);
+	}
+
 	int res_len;
-	char *res_str = curl_easy_unescape(handle, str, str_len, &res_len);
+	char *res_str = curl_easy_unescape(handle, str, (int)str_len, &res_len);
 	if (res_str == NULL) {
 		lua_pushliteral(L, "Libcurl: curl_easy_unescape failed");
 		lua_error(L);
 	}
 
-	lua_pushlstring(L, res_str, res_len);
+	lua_pushlstring(L, res_str, (size_t)res_len);
 	curl_free(res_str);
 
 	return 1;

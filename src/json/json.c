@@ -122,7 +122,7 @@ static int push_json_value(lua_State *L, json_t *value)
  */
 static int make_json_table(lua_State *L, json_t **storage)
 {
-	int len = luaL_len(L, -1);
+	lua_Integer len = luaL_len(L, -1);
 
 	bool is_object = false;
 	lua_pushnil(L);
@@ -138,7 +138,7 @@ static int make_json_table(lua_State *L, json_t **storage)
 					is_object = true;
 					break;
 				}
-				int key = lua_tointeger(L, -2);
+				lua_Integer key = lua_tointeger(L, -2);
 				if (key < 1 || key > len) is_object = true;
 				break;
 			default:
@@ -177,7 +177,7 @@ static int make_json_table(lua_State *L, json_t **storage)
 		}
 	} else {
 		table = json_array();
-		for (int i = 1; i <= len; ++i) {
+		for (lua_Integer i = 1; i <= len; ++i) {
 			lua_rawgeti(L, -1, i);
 			json_t *value = NULL;
 			if (make_json_value(L, &value) != 0) {
@@ -271,7 +271,7 @@ static int iterate_array(lua_State *L, json_t *array)
 			lua_replace(L, -2);
 			return 1;
 		}
-		lua_rawseti(L, -2, ++i);
+		lua_rawseti(L, -2, (lua_Integer)++i);
 	}
 	return 0;
 }
@@ -508,10 +508,12 @@ int json_decode_string(lua_State *L, const char *str, size_t len)
 static int decode(lua_State *L)
 {
 	luaL_checkudata(L, 1, JSON_MODULE_META_NAME);
-	const char *str = luaL_checkstring(L, 2);
+
+	size_t str_len;
+	const char *str = luaL_checklstring(L, 2, &str_len);
 
 	lua_insert(L, 1);
-	return decode_string(L, str, luaL_len(L, 1));
+	return decode_string(L, str, str_len);
 }
 
 /**

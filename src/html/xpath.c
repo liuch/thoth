@@ -102,7 +102,7 @@ static int cleanup(lua_State *L)
  */
 static int get_result_type(lua_State *L)
 {
-	struct xpath_data *xdata = luaL_checkudata(L, 1, HTML_XPATH_META_NAME);
+	const struct xpath_data *xdata = luaL_checkudata(L, 1, HTML_XPATH_META_NAME);
 	assert(xdata->obj != NULL);
 
 	switch (xdata->obj->type) {
@@ -143,7 +143,7 @@ static int get_result_type(lua_State *L)
  */
  static int get_result_size(lua_State *L)
 {
-	struct xpath_data *xdata = luaL_checkudata(L, 1, HTML_XPATH_META_NAME);
+	const struct xpath_data *xdata = luaL_checkudata(L, 1, HTML_XPATH_META_NAME);
 	assert(xdata->obj != NULL);
 
 	int res = 0;
@@ -201,25 +201,24 @@ static void make_nodeset_table(lua_State *L, int document_pos, xmlNodeSetPtr nod
  */
 static int get_result_value(lua_State *L)
 {
-	struct xpath_data *xdata = luaL_checkudata(L, 1, HTML_XPATH_META_NAME);
+	const struct xpath_data *xdata = luaL_checkudata(L, 1, HTML_XPATH_META_NAME);
 	assert(xdata->obj != NULL);
-
-	xmlNodeSetPtr nodeset;
 
 	switch (xdata->obj->type) {
 		case XPATH_NODESET:
+		{
 			int res_stack_index = lua_isnoneornil(L, 2) ? 0 : 2;
 
 			lua_getuservalue(L, 1);
 			int document_pos = lua_gettop(L);
 
-			nodeset = xdata->obj->nodesetval;
+			xmlNodeSetPtr nodeset = xdata->obj->nodesetval;
 			if (res_stack_index == 0) {
 				make_nodeset_table(L, document_pos, nodeset);
 				break;
 			} else if (lua_isinteger(L, res_stack_index)) {
 				if (nodeset != NULL) {
-					int num = lua_tointeger(L, 2);
+					lua_Integer num = lua_tointeger(L, 2);
 					if (num > 0 && num <= xdata->obj->nodesetval->nodeNr) {
 						html_get_node_by_ptr(L, document_pos, nodeset->nodeTab[num - 1]);
 						break;
@@ -227,6 +226,7 @@ static int get_result_value(lua_State *L)
 				}
 			}
 			return 0;
+		}
 		case XPATH_BOOLEAN:
 			lua_pushboolean(L, xdata->obj->boolval);
 			break;

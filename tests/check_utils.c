@@ -137,7 +137,7 @@ END_TEST
 START_TEST(test_utils_b64dec_two_zero_bytes)
 {
 	base64dec("AAA=");
-	ck_assert_int_eq(2, luaL_len(L, -1));
+	ck_assert_int_eq(2, lua_rawlen(L, -1));
 	const char *res = lua_tostring(L, -1);
 	ck_assert(res[0] == '\0' && res[1] == '\0');
 }

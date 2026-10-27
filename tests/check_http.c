@@ -208,9 +208,9 @@ static void resp_cookies(void)
 
 static bool cookie_exists(const char *name, const char *value)
 {
-	int size = luaL_len(L, -1);
+	size_t size = lua_rawlen(L, -1);
 	int nlen = strlen(name);
-	for (int i = 1; i <= size; ++i) {
+	for (size_t i = 1; i <= size; ++i) {
 		lua_rawgeti(L, -1, i);
 		ck_assert_int_eq(LUA_TSTRING, lua_type(L, -1));
 		const char *cstr = lua_tostring(L, -1);
@@ -327,7 +327,7 @@ START_TEST(test_http_unescape)
 	get_socket();
 	lua_pushliteral(L, "1q%3B%3F%26%3D%20%2B%00");
 	ck_assert_int_eq(LUA_OK, socket_unescape());
-	ck_assert_int_eq(9, luaL_len(L, -1));
+	ck_assert_int_eq(9, lua_rawlen(L, -1));
 	lua_pushlstring(L, "1q;?&= +\0", 9);
 	ck_assert(lua_compare(L, -1, -2, LUA_OPEQ));
 }
@@ -719,7 +719,7 @@ START_TEST(test_http_get_cookies)
 
 	resp_cookies();
 	ck_assert_int_eq(LUA_TTABLE, lua_type(L, -1));
-	ck_assert_int_eq(2, luaL_len(L, -1));
+	ck_assert_int_eq(2, lua_rawlen(L, -1));
 	ck_assert(cookie_exists("cname1", "cValue1"));
 	ck_assert(cookie_exists("cname2", "cValue2"));
 }

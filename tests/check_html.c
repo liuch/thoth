@@ -225,13 +225,13 @@ END_TEST
 
 START_TEST(test_html_xpath_result_list)
 {
-	const int item_count = 3;
+	const size_t item_count = 3;
 	get_document(NULL, NULL);
 	eval_xpath("//span");
 	xres_result(0);
 	ck_assert_int_eq(LUA_TTABLE, lua_type(L, -1));
-	ck_assert_int_eq(item_count, luaL_len(L, -1));
-	for (int i = 1; i <= item_count; ++i) {
+	ck_assert_int_eq(item_count, lua_rawlen(L, -1));
+	for (size_t i = 1; i <= item_count; ++i) {
 		lua_rawgeti(L, -1, i);
 		check_userdata_meta_name("thoth.html.node");
 		lua_pop(L, 1);

@@ -79,7 +79,7 @@ START_TEST(test_json_decode_numbers_array_with_hole)
 	ck_assert_int_eq(LUA_TTABLE, lua_type(L, rpos));
 	ck_assert_int_eq(LUA_TNIL, lua_type(L, epos));
 	// Size of the table
-	ck_assert_int_eq(5, luaL_len(L, rpos));
+	ck_assert_int_eq(5, lua_rawlen(L, rpos));
 	// Number of keys
 	int cnt = 0;
 	lua_pushnil(L);

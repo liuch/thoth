@@ -58,7 +58,7 @@ static int trim(lua_State *L)
 		if (!is_space(end[-1])) break;
 	}
 
-	lua_pushlstring(L, start, end - start);
+	lua_pushlstring(L, start, (size_t)(end - start));
 	return 1;
 }
 
@@ -84,20 +84,36 @@ static int base64dec(lua_State *L)
 		lua_pushfstring(L, "The function expects 1 argument, %d passed", cnt);
 		lua_error(L);
 	}
-	const char *str = luaL_checkstring(L, 1);
-	int str_len = luaL_len(L, 1);
+
+	size_t str_len;
+	const char *str = luaL_checklstring(L, 1, &str_len);
 
 	char *buffer = malloc(str_len * 3 / 4 + 1);
 	if (buffer == NULL) {
 		throw_out_of_memory(L, "base64dec");
-		lua_error(L);
+		return lua_error(L);
 	}
 
 	base64_decodestate state;
 	base64_init_decodestate(&state);
-	int res_len = base64_decode_block(str, str_len, buffer, &state);
 
-	lua_pushlstring(L, buffer, res_len);
+	size_t dec_bytes = 0;
+	size_t max_bytes = INT_MAX / 2;
+
+	for (size_t offset = 0; offset < str_len; ) {
+		size_t bytes_to_decode = str_len - offset;
+		if (bytes_to_decode > max_bytes) bytes_to_decode = max_bytes;
+		size_t res_bytes = (size_t)base64_decode_block(
+			str + offset,
+			(int)bytes_to_decode,
+			buffer + dec_bytes,
+			&state
+		);
+		offset += bytes_to_decode;
+		dec_bytes += res_bytes;
+	}
+
+	lua_pushlstring(L, buffer, dec_bytes);
 	free(buffer);
 	return 1;
 }
@@ -122,10 +138,11 @@ static int base64enc(lua_State *L)
 	int cnt = lua_gettop(L);
 	if (cnt != 1) {
 		lua_pushfstring(L, "The function expects 1 argument, %d passed", cnt);
-		lua_error(L);
+		return lua_error(L);
 	}
-	const char *str = luaL_checkstring(L, 1);
-	int str_len = luaL_len(L, 1);
+
+	size_t str_len;
+	const char *str = luaL_checklstring(L, 1, &str_len);
 
 	char *buffer = malloc(4 * (str_len + 2) / 3 + 1);
 	if (buffer == NULL) {
@@ -136,11 +153,25 @@ static int base64enc(lua_State *L)
 	base64_encodestate state;
 	base64_init_encodestate(&state);
 
-	int res_len = base64_encode_block(str, str_len, buffer, &state);
-	res_len += base64_encode_blockend(buffer + res_len, &state);
+	size_t enc_bytes = 0;
+	size_t max_bytes = INT_MAX / 2;
 
-	lua_pop(L, 1);
-	lua_pushlstring(L, buffer, res_len);
+	for (size_t offset = 0; offset < str_len; ) {
+		size_t bytes_to_encode = str_len - offset;
+		if (bytes_to_encode > max_bytes) bytes_to_encode = max_bytes;
+		size_t res_bytes = (size_t)base64_encode_block(
+			str + offset,
+			(int)bytes_to_encode,
+			buffer + enc_bytes,
+			&state
+		);
+		offset += bytes_to_encode;
+		enc_bytes += res_bytes;
+	}
+	enc_bytes += (size_t)base64_encode_blockend(buffer + enc_bytes, &state);
+
+	lua_settop(L, 0);
+	lua_pushlstring(L, buffer, enc_bytes);
 	free(buffer);
 	return trim(L);
 }
