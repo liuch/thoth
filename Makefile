@@ -53,6 +53,6 @@ install: $(TARGET_FILE)
 uninstall:
 	rm $(DESTDIR)$(PREFIX)/bin/$(TARGET_FILE)
 
-test: $(SRC_TESTS)
+test: $(TESTS_SRC)
 	$(CC) $(TEST_SRC) -o $(TEST_BINARY) $(LIBRARY_FLAGS) -lcheck -lsubunit -lm -D_REENTERANT -lpthread
 	./$(TEST_BINARY)
