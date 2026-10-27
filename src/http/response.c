@@ -213,7 +213,7 @@ static int get_response_cookies(lua_State *L)
  *
  * @param lua_State* L Lua stack
  *
- * @return int 0 or 1
+ * @return int 1
  *
  * === Lua stack ====
  *
@@ -222,7 +222,7 @@ static int get_response_cookies(lua_State *L)
  *   - [2] string   Property name
  *
  * Output:
- *   - cfunction|bool|number|string|nothing
+ *   - cfunction|bool|number|string|nil
  */
 static int get_response_property(lua_State *L)
 {
@@ -235,22 +235,32 @@ static int get_response_property(lua_State *L)
 		{ NULL, NULL }
 	};
 
-	struct http_resp *resp = lua_touserdata(L, 1);
-	const char *pname = luaL_checkstring(L, 2);
-	if (!get_cfunction(L, pname, flist)) {
-		if (strcmp(pname, "ok") == 0) {
-			lua_pushboolean(L, resp->ok);
-		} else if (strcmp(pname, "status") == 0) {
-			lua_pushinteger(L, resp->status);
-		} else if (strcmp(pname, "error") == 0) {
-			if (resp->error[0] == '\0') {
-				return 0;
-			}
+	const struct http_resp *resp = luaL_checkudata(L, 1, HTTP_RESP_META_NAME);
+
+	if (lua_type(L, 2) != LUA_TSTRING) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	const char *pname = lua_tostring(L, 2);
+	if (get_cfunction(L, pname, flist)) {
+		return 1;
+	}
+
+	if (strcmp(pname, "ok") == 0) {
+		lua_pushboolean(L, resp->ok);
+	} else if (strcmp(pname, "status") == 0) {
+		lua_pushinteger(L, resp->status);
+	} else if (strcmp(pname, "error") == 0) {
+		if (resp->error[0] != '\0') {
 			lua_pushstring(L, resp->error);
 		} else {
-			return 0;
+			lua_pushnil(L);
 		}
+	} else {
+		lua_pushnil(L);
 	}
+
 	return 1;
 }
 

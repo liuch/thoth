@@ -290,7 +290,7 @@ static int eval_xpath(lua_State *L)
  *
  * @param lua_State *L Lua stack
  *
- * @return int 0 or 1
+ * @return int 1
  *
  * === Lua stack ===
  *
@@ -299,7 +299,7 @@ static int eval_xpath(lua_State *L)
  *   - [2] string   Property name
  *
  * Output:
- *   - cfunction
+ *   - cfunction|nil
  */
 static int get_property(lua_State *L)
 {
@@ -314,8 +314,16 @@ static int get_property(lua_State *L)
 		{ NULL, NULL }
 	};
 
-	const char *pname = luaL_checkstring(L, 2);
-	return get_cfunction(L, pname, flist);
+	luaL_checkudata(L, 1, HTML_NODE_META_NAME);
+
+	if (lua_type(L, 2) == LUA_TSTRING) {
+		if (get_cfunction(L, lua_tostring(L, 2), flist)) {
+			return 1;
+		}
+	}
+
+	lua_pushnil(L);
+	return 1;
 }
 
 /**

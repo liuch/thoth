@@ -1072,7 +1072,7 @@ static int cleanup(lua_State *L)
  *
  * @param lua_State* L Lua stack
  *
- * @return int 0 or 1
+ * @return 1
  *
  * === Lua stack ===
  *
@@ -1095,15 +1095,24 @@ static int get_property(lua_State *L)
 		{ NULL, NULL }
 	};
 
-	struct curl_data *cdata = lua_touserdata(L, 1);
-	const char *pname = luaL_checkstring(L, 2);
-	if (!get_cfunction(L, pname, flist)) {
-		if (strcmp(pname, "queries") == 0) {
-			lua_pushinteger(L, cdata->queries);
-		} else {
-			return 0;
-		}
+	struct curl_data *cdata = luaL_checkudata(L, 1, HTTP_SOCKET_META_NAME);
+
+	if (lua_type(L, 2) != LUA_TSTRING) {
+		lua_pushnil(L);
+		return 1;
 	}
+
+	const char *pname = luaL_checkstring(L, 2);
+	if (get_cfunction(L, pname, flist)) {
+		return 1;
+	}
+
+	if (strcmp(pname, "queries") == 0) {
+		lua_pushinteger(L, cdata->queries);
+		return 1;
+	}
+
+	lua_pushnil(L);
 	return 1;
 }
 
@@ -1130,11 +1139,10 @@ static int set_property(lua_State *L)
 	const char *pname = luaL_checkstring(L, 2);
 	if (strcmp(pname, "queries") == 0) {
 		cdata->queries = luaL_checkinteger(L, 3);
-	} else {
-		lua_pushliteral(L, "Invalid socket property");
-		lua_error(L);
+		return 0;
 	}
-	return 0;
+
+	return luaL_error(L, "Socket property '%s' is read-only or does not exist", pname);
 }
 
 /**
@@ -1154,7 +1162,7 @@ static int set_property(lua_State *L)
  */
 static int to_string(lua_State *L)
 {
-	const struct curl_data *cdata = lua_touserdata(L, 1);
+	const struct curl_data *cdata = luaL_checkudata(L, 1, HTTP_SOCKET_META_NAME);
 	const char *state = cdata->handle != NULL ? "active" : "closed";
 	char buffer[64];
 	snprintf(buffer, sizeof(buffer), "%s (%s; id=%u)", HTTP_SOCKET_META_NAME, state, cdata->id);

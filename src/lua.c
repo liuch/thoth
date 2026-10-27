@@ -37,7 +37,7 @@ void throw_out_of_memory(lua_State *L, const char *module)
  *   nothing
  *
  * Output:
- *   - table|nothing
+ *   - function|nil
  */
 int get_cfunction(lua_State *L, const char *name, const luaL_Reg *flist)
 {
