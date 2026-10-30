@@ -277,7 +277,7 @@ static void get_document(lua_State *L, const char *str, size_t len, const char *
 		(int)len,
 		NULL,
 		encoding,
-		HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING
+		HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING | HTML_PARSE_COMPACT
 	);
 	if (hdoc->doc == NULL) {
 		throw_parser_error(L, "Failed to load html document");
