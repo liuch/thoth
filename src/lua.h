@@ -9,7 +9,7 @@ extern "C"
 #include <lua5.3/lualib.h>
 #include <lua5.3/lauxlib.h>
 
-void throw_out_of_memory(lua_State *L, const char *module);
+int throw_out_of_memory(lua_State *L);
 int get_cfunction(lua_State *L, const char *name, const luaL_Reg *flist);
 
 #ifdef __cplusplus

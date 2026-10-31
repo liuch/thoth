@@ -90,8 +90,7 @@ static int base64dec(lua_State *L)
 
 	char *buffer = malloc(str_len * 3 / 4 + 1);
 	if (buffer == NULL) {
-		throw_out_of_memory(L, "base64dec");
-		return lua_error(L);
+		return throw_out_of_memory(L);
 	}
 
 	base64_decodestate state;
@@ -146,8 +145,7 @@ static int base64enc(lua_State *L)
 
 	char *buffer = malloc(4 * (str_len + 2) / 3 + 1);
 	if (buffer == NULL) {
-		throw_out_of_memory(L, "base64enc");
-		lua_error(L);
+		return throw_out_of_memory(L);
 	}
 
 	base64_encodestate state;

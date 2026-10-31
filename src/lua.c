@@ -5,9 +5,8 @@
  * Throws a Lua error about out of memory
  *
  * @param lua_State* L      Lua stack
- * @param char*      module Module name
  *
- * @return void
+ * @return int
  *
  * === Lua stack ===
  *
@@ -17,10 +16,10 @@
  * Output:
  *   nothing
  */
-void throw_out_of_memory(lua_State *L, const char *module)
+int throw_out_of_memory(lua_State *L)
 {
-	lua_pushfstring(L, "%s failed: out of memory", module);
-	lua_error(L);
+	lua_pushliteral(L, "not enough memory");
+	return lua_error(L);
 }
 
 /**

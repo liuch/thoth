@@ -197,7 +197,7 @@ static int get_content(lua_State *L)
 		case XML_COMMENT_NODE:
 			text = xmlNodeGetContent(ndata->node);
 			if (text == NULL)
-				throw_out_of_memory(L, "html");
+				return throw_out_of_memory(L);
 			lua_pushstring(L, (const char *)text);
 			xmlFree(text);
 			break;
@@ -227,7 +227,7 @@ static int get_outer_html(lua_State *L)
 	struct node_data *ndata = luaL_checkudata(L, 1, HTML_NODE_META_NAME);
 	xmlBufferPtr buffer = xmlBufferCreate();
 	if (buffer == NULL)
-		throw_out_of_memory(L, "html");
+		return throw_out_of_memory(L);
 
 	lua_getuservalue(L, 1);
 	htmlDocPtr doc = html_get_document_ptr(L);

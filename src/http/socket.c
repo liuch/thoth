@@ -349,7 +349,7 @@ static void set_user_headers(lua_State *L, int t_index, struct curl_data *cdata)
 					size_t vlen = strlen(val);
 					char *tmp = malloc(klen + vlen + 3);
 					if (tmp == NULL) {
-						throw_out_of_memory(L, "set_user_headers");
+						throw_out_of_memory(L);
 					}
 					// cppcheck-suppress nullPointerOutOfMemory
 					strcpy(tmp, key);
@@ -445,7 +445,7 @@ static size_t set_http_fields(lua_State *L, int data_index, struct curl_data *cd
 
 		char *v_estr = curl_easy_escape(cdata->handle, v_str, (int)v_size);
 		if (v_estr == NULL) {
-			throw_out_of_memory(L, "HTTP escape");
+			return (size_t)throw_out_of_memory(L);
 		}
 
 		size_t item_size = strlen(k_str) + strlen(v_estr) + 2;
@@ -453,7 +453,7 @@ static size_t set_http_fields(lua_State *L, int data_index, struct curl_data *cd
 			size = len + (item_size < 64 ? 64 : item_size + 1);
 			p_fields = realloc(p_fields, size);
 			if (p_fields == NULL) {
-				throw_out_of_memory(L, "HTTP fields");
+				return (size_t)throw_out_of_memory(L);
 			}
 			cdata->fields_data.pointer = p_fields;
 		}
@@ -491,7 +491,7 @@ static void set_http_mime(lua_State *L, int data_index, struct curl_data *cdata)
 {
 	cdata->multipart_data = curl_mime_init(cdata->handle);
 	if (cdata->multipart_data == NULL) {
-		throw_out_of_memory(L, "MIME init");
+		throw_out_of_memory(L);
 	}
 
 	char numb_str[64];
@@ -536,10 +536,10 @@ static void set_http_mime(lua_State *L, int data_index, struct curl_data *cdata)
 		}
 		curl_mimepart *part = curl_mime_addpart(cdata->multipart_data);
 		if (part == NULL) {
-			throw_out_of_memory(L, "MIME addpart");
+			throw_out_of_memory(L);
 		}
 		if (curl_mime_name(part, k_str) != CURLE_OK || curl_mime_data(part, v_str, v_size) != CURLE_OK) {
-			throw_out_of_memory(L, "MIME data");
+			throw_out_of_memory(L);
 		}
 		lua_pop(L, 1);
 	}
@@ -598,7 +598,7 @@ static void set_http_method_params(lua_State *L, int params_index, struct curl_d
 				size = lua_rawlen(L, -1);
 				cdata->fields_data.pointer = malloc(size);
 				if (cdata->fields_data.pointer == NULL) {
-					throw_out_of_memory(L, "HTTP");
+					throw_out_of_memory(L);
 				}
 				memcpy(cdata->fields_data.pointer, lua_tostring(L, -1), size);
 				cdata->fields_data.size = size;
