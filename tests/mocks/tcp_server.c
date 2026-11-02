@@ -46,7 +46,10 @@ void tcpserver_start(const char *resp, size_t rsize)
 	server_address.sin_family = AF_INET;
 	server_address.sin_port = 0;
 	inet_pton(AF_INET, "127.0.0.1", &server_address.sin_addr);
-	bind(server_socket, (struct sockaddr *)&server_address, sizeof(server_address));
+	if (bind(server_socket, (struct sockaddr *)&server_address, sizeof(server_address)) != 0) {
+		fprintf(stderr, "Error: Cannot bind socket\n");
+		abort();
+	}
 
 	socklen_t len = sizeof(server_address);
 	getsockname(server_socket, (struct sockaddr *)&server_address, &len);
@@ -99,6 +102,8 @@ static void free_buffers(void)
 
 static void *listener(void *data)
 {
+	(void) data;
+
 	int client_socket = accept(server_socket, NULL, NULL);
 	if (client_socket == -1) {
 		fprintf(stderr, "Error: Cannot accept socket\n");
@@ -113,7 +118,7 @@ static void *listener(void *data)
 			abort();
 		}
 		query.pointer = p;
-		ssize_t cnt = recv(client_socket, query.pointer + query.size, 4096, 0);
+		ssize_t cnt = recv(client_socket, (char *)query.pointer + query.size, 4096, 0);
 		if (cnt == -1) {
 			fprintf(stderr, "Error: Failed to read from socket\n");
 			abort();
@@ -122,11 +127,11 @@ static void *listener(void *data)
 	} while (cnt != 0);
 
 	cnt = send(client_socket, response.pointer, response.size, 0);
-	if (cnt == -1) {
+	if (cnt < 0) {
 		fprintf(stderr, "Error: Failed to send data to socket\n");
 		abort();
 	}
-	if (cnt != response.size) {
+	if ((size_t)cnt != response.size) {
 		fprintf(stderr, "Error: Invalid number of bytes sent\n");
 		abort();
 	}

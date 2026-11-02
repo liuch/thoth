@@ -53,6 +53,7 @@ install: $(TARGET_FILE)
 uninstall:
 	rm $(DESTDIR)$(PREFIX)/bin/$(TARGET_FILE)
 
+test: CFLAGS = -Wall -Wextra -pedantic -g
 test: $(TESTS_SRC)
-	$(CC) $(TEST_SRC) -o $(TEST_BINARY) $(LIBRARY_FLAGS) -lcheck -lsubunit -lm -D_REENTERANT -lpthread
+	$(CC) $(CFLAGS) $(TEST_SRC) -o $(TEST_BINARY) $(LIBRARY_FLAGS) -lcheck -lsubunit -lm -D_REENTERANT -lpthread
 	./$(TEST_BINARY)

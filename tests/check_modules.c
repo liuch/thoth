@@ -8,7 +8,7 @@ START_TEST(test_module_list)
 	const char *list[] = { "http", "html", "json", "utils", "readline" };
 	lua_newtable(L);
 	get_modules(L);
-	for (int i = 0; i < sizeof(list) / sizeof(list[0]); ++i) {
+	for (size_t i = 0; i < sizeof(list) / sizeof(list[0]); ++i) {
 		int res = lua_getfield(L, -1, list[i]);
 		ck_assert_int_eq(LUA_TUSERDATA, res);
 		lua_pop(L, 1);
