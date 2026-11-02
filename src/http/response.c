@@ -146,7 +146,7 @@ static int get_response_html(lua_State *L)
  *   - [2] string   Header name. Optional
  *
  * Output:
- *   - table|string|nil|nothing List of the headers or the header value with the passed name
+ *   - table|string|nil List of the headers or the header value with the passed name
  */
 static int get_response_headers(lua_State *L)
 {
@@ -161,24 +161,23 @@ static int get_response_headers(lua_State *L)
 	if (args == 1 || h_type != LUA_TTABLE) return 1;
 
 	luaL_argcheck(L, lua_type(L, 2) == LUA_TSTRING, 2, "string expected");
-	char *name = my_strdup(lua_tostring(L, 2));
-	if (name == NULL) {
-		return throw_out_of_memory(L);
-	}
-	for (char *p = name; *p; ++p) *p = (char)tolower(*p);
 
-	lua_pushnil(L);
-	while (lua_next(L, -2) != 0) {
-		if (lua_type(L, -2) == LUA_TSTRING) {
-			if (strcmp(name, lua_tostring(L, -2)) == 0) {
-				free(name);
-				return 1;
-			}
-		}
-		lua_pop(L, 1);
+	size_t len;
+	const char *name = lua_tolstring(L, 2, &len);
+	luaL_Buffer buf;
+	if (len == 0) {
+		lua_pushnil(L);
+		return 1;
 	}
-	free(name);
-	return 0;
+
+	char *lname = luaL_buffinitsize(L, &buf, len);
+	for (size_t i = 0; i < len; ++i) {
+		lname[i] = (char)tolower((unsigned char)name[i]);
+	}
+	luaL_pushresultsize(&buf, len);
+
+	lua_rawget(L, -2);
+	return 1;
 }
 
 /**
@@ -346,15 +345,15 @@ void response_saveheaders(lua_State *L, struct http_resp *resp, CURL *handle)
 	struct curl_header *h;
 	struct curl_header *prev = NULL;
 	while ((h = curl_easy_nextheader(handle, CURLH_HEADER, -1, prev))) {
-		char *name = my_strdup(h->name);
-		if (name == NULL) {
-			throw_out_of_memory(L);
+		luaL_Buffer buf;
+		size_t len = strlen(h->name);
+		char *lname = luaL_buffinitsize(L, &buf, len);
+		for (size_t i = 0; i < len; ++i) {
+			lname[i] = (char)tolower((unsigned char)h->name[i]);
 		}
-		for (char *p = name; *p; ++p) *p = (char)tolower(*p);
-		lua_pushstring(L, name);
+		luaL_pushresultsize(&buf, len);
 		lua_pushstring(L, h->value);
 		lua_settable(L, -3);
-		free(name);
 		prev = h;
 	}
 	resp->headers_ref = luaL_ref(L, LUA_REGISTRYINDEX);
