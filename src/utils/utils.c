@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
@@ -12,18 +13,6 @@ struct utils_data {
 };
 
 static int module_started = 0;
-
-/**
- * Checks if the passed charracter is whitespace
- *
- * @param char c Character to check
- *
- * @return bool
- */
-static bool is_space(char c)
-{
-	return (c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == '\v') ? true : false;
-}
 
 /**
  * Removes leading and trailing whitespace from the given Lua string
@@ -45,17 +34,19 @@ static int trim(lua_State *L)
 {
 	int cnt = lua_gettop(L);
 	if (cnt != 1) {
-		lua_pushfstring(L, "The function expects 1 argument, got %d", cnt);
-		lua_error(L);
+		luaL_error(L, "The function expects 1 argument, got %d", cnt);
 	}
-	const char *start = luaL_checkstring(L, 1);
 
-	const char *end = start + strlen(start);
+	size_t len;
+	const char *start = luaL_checklstring(L, 1, &len);
+
+	const char *end = start + len;
+
 	for ( ; start < end; ++start) {
-		if (!is_space(*start)) break;
+		if (!isspace((unsigned char)*start)) break;
 	}
 	for ( ; start < end; --end) {
-		if (!is_space(end[-1])) break;
+		if (!isspace((unsigned char)end[-1])) break;
 	}
 
 	lua_pushlstring(L, start, (size_t)(end - start));
