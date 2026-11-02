@@ -80,31 +80,40 @@ static char *completion_generator(const char *text, int state)
 {
 	static int index;
 	static size_t len;
+
+	lua_State *L = lstate;
+
 	if (state == 0) {
 		index = 0;
 		len = strlen(text);
+
+		lua_getfield(L, LUA_REGISTRYINDEX, READLINE_CURRENT_MODULE);
+		get_settings(L, "matches");
+		assert(lua_type(L, -1) == LUA_TTABLE);
 	}
-
-	lua_State *L = lstate;
-	int top = lua_gettop(L);
-
-	lua_getfield(L, LUA_REGISTRYINDEX, READLINE_CURRENT_MODULE);
-	get_settings(L, "matches");
 
 	char *res = NULL;
 	int ntype;
+
 	while ((ntype = lua_rawgeti(L, -1, ++index)) != LUA_TNIL) {
 		if (ntype == LUA_TSTRING) {
 			const char *str = lua_tostring(L, -1);
 			if (strncmp(text, str, len) == 0) {
 				res = my_strdup(str);
+				lua_pop(L, 1);
+				if (res == NULL) {
+					throw_out_of_memory(L);
+				}
 				break;
 			}
 		}
 		lua_pop(L, 1);
 	}
 
-	lua_settop(L, top);
+	if (res == NULL) {
+		lua_pop(L, 2);
+	}
+
 	return res;
 }
 
