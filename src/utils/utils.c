@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <assert.h>
 #include <b64/cencode.h>
 #include <b64/cdecode.h>
 #include "../lua.h"
@@ -78,11 +79,9 @@ static int base64dec(lua_State *L)
 
 	size_t str_len;
 	const char *str = luaL_checklstring(L, 1, &str_len);
-
-	char *buffer = malloc(str_len * 3 / 4 + 1);
-	if (buffer == NULL) {
-		return throw_out_of_memory(L);
-	}
+	luaL_Buffer buf;
+	size_t buf_size = str_len * 3 / 4 + 1;
+	char *res = luaL_buffinitsize(L, &buf, buf_size);
 
 	base64_decodestate state;
 	base64_init_decodestate(&state);
@@ -96,15 +95,17 @@ static int base64dec(lua_State *L)
 		size_t res_bytes = (size_t)base64_decode_block(
 			str + offset,
 			(int)bytes_to_decode,
-			buffer + dec_bytes,
+			res + dec_bytes,
 			&state
 		);
 		offset += bytes_to_decode;
 		dec_bytes += res_bytes;
 	}
 
-	lua_pushlstring(L, buffer, dec_bytes);
-	free(buffer);
+	assert(buf_size >= dec_bytes);
+
+	luaL_pushresultsize(&buf, dec_bytes);
+
 	return 1;
 }
 
@@ -133,11 +134,9 @@ static int base64enc(lua_State *L)
 
 	size_t str_len;
 	const char *str = luaL_checklstring(L, 1, &str_len);
-
-	char *buffer = malloc(4 * (str_len + 2) / 3 + 1);
-	if (buffer == NULL) {
-		return throw_out_of_memory(L);
-	}
+	luaL_Buffer buf;
+	size_t buf_size = 4 * (str_len + 2) / 3 + 1;
+	char *res = luaL_buffinitsize(L, &buf, buf_size);
 
 	base64_encodestate state;
 	base64_init_encodestate(&state);
@@ -151,17 +150,21 @@ static int base64enc(lua_State *L)
 		size_t res_bytes = (size_t)base64_encode_block(
 			str + offset,
 			(int)bytes_to_encode,
-			buffer + enc_bytes,
+			res + enc_bytes,
 			&state
 		);
 		offset += bytes_to_encode;
 		enc_bytes += res_bytes;
 	}
-	enc_bytes += (size_t)base64_encode_blockend(buffer + enc_bytes, &state);
+	enc_bytes += (size_t)base64_encode_blockend(res + enc_bytes, &state);
 
-	lua_settop(L, 0);
-	lua_pushlstring(L, buffer, enc_bytes);
-	free(buffer);
+	assert(buf_size >= enc_bytes);
+
+	luaL_pushresultsize(&buf, enc_bytes);
+
+	lua_replace(L, 1);
+	lua_settop(L, 1);
+
 	return trim(L);
 }
 
